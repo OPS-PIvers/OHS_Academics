@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OHS Academics & Attendance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #2d3f89; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
+        .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .kpi-value { font-size: 2.5rem; font-weight: 700; color: #2d3f89; }
+        .kpi-label { font-size: 1rem; font-weight: 500; color: #4b5563; }
+        .ineligible-text { color: #ef4444; font-weight: 600; }
+        .eligible-text { color: #22c55e; font-weight: 600; }
+        .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #374151; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .filter-btn:hover { background-color: #f3f4f6; }
+        .filter-btn.active { background-color: #2d3f89; color: white; border-color: #2d3f89; }
+        select.filter-select {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em;
+            padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+            border-radius: 0.5rem; border: 1px solid #d1d5db;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        select.filter-select:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3); }
+        .fixed-table { table-layout: fixed; width: 100%; }
+        th[data-sort] { cursor: pointer; }
+        .sort-icon { color: #9ca3af; font-size: 0.9em; vertical-align: middle; }
+        .tooltip-trigger, .kpi-card.clickable { cursor: pointer; }
+        .header-title { text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5); }
+        .header-subtitle { text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4); }
+        /* Tooltip Styles */
+        #tooltip {
+            position: absolute; display: none;
+            background-color: #111827; color: white;
+            padding: 0.75rem; border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 0.875rem; max-width: 300px;
+            z-index: 1000;
+            transition: opacity 0.2s;
+        }
+        #tooltip h4 { font-weight: 600; margin-bottom: 0.5rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.5rem;}
+        #tooltip ul { list-style: none; padding-left: 0; }
+        #tooltip li { margin-top: 0.5rem; display: flex; justify-content: space-between; }
+        #tooltip li span:first-child { color: #d1d5db; padding-right: 1rem; }
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+    <div id="tooltip"></div>
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-extrabold text-white header-title tracking-tight">OHS Academics & Attendance Dashboard</h1>
+            <p class="text-gray-300 mt-2 header-subtitle">Visual analysis of student performance and attendance.</p>
+        </header>
+
+        <div id="loading-state" class="text-center py-16 bg-white rounded-lg">
+            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p class="mt-4 text-gray-600 font-medium">Loading and processing student data...</p>
+        </div>
+
+        <main id="dashboard-content" class="hidden">
+             <div class="card mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Global Dashboard Filters</h2>
+                    <button id="reset-global-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                </div>
+                <div id="global-filters" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="grade-filter" class="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
+                        <select id="grade-filter" class="filter-select w-full"><option value="all">All Grades</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select>
+                    </div>
+                    <div>
+                        <label for="sped-filter" class="block text-sm font-medium text-gray-700 mb-1">Student Group</label>
+                        <select id="sped-filter" class="filter-select w-full"><option value="all">All Students</option><option value="sped">Special Education</option><option value="gened">General Education</option></select>
+                    </div>
+                    <div>
+                        <label for="activity-filter" class="block text-sm font-medium text-gray-700 mb-1">Activity / Team</label>
+                        <select id="activity-filter" class="filter-select w-full"><option value="all">All Activities</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                <div id="kpi-total-students-card" class="card kpi-card"><div id="total-students" class="kpi-value">0</div><div class="kpi-label">Total Students</div></div>
+                <div id="kpi-ineligible-students-card" class="card kpi-card"><div id="ineligible-students" class="kpi-value">0</div><div class="kpi-label">Ineligible Students</div></div>
+                <div id="kpi-ineligibility-rate-card" class="card kpi-card"><div id="ineligibility-rate" class="kpi-value">0%</div><div class="kpi-label">Ineligibility Rate</div></div>
+                <div id="kpi-avg-absences-card" class="card kpi-card"><div id="avg-absences" class="kpi-value">0</div><div class="kpi-label">Avg. Absences (Periods)</div></div>
+                <div id="kpi-total-f-grades-card" class="card kpi-card"><div id="total-f-grades" class="kpi-value">0</div><div class="kpi-label">Total F Grades</div></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Absence Breakdown by Type</h2><div class="chart-container"><canvas id="attendance-breakdown-chart"></canvas></div></div>
+                <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ineligibility Reasons</h2><div class="chart-container"><canvas id="ineligibility-chart"></canvas></div></div>
+                <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Average Absences by Number of Failing Grades</h2><div class="chart-container"><canvas id="correlation-chart"></canvas></div></div>
+                <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Performance: Activity vs. Non-Activity Students</h2><div class="chart-container"><canvas id="activity-chart"></canvas></div></div>
+            </div>
+
+            <div class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Student Lookup</h2>
+                    <button id="reset-student-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <input type="text" id="student-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg">
+                    <div>
+                        <label for="student-activity-filter" class="sr-only">Filter by Activity</label>
+                        <select id="student-activity-filter" class="filter-select w-full"></select>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                     <div id="student-grade-filters" class="flex flex-wrap items-center gap-2"><span class="font-medium text-gray-600">Grade:</span><button class="filter-btn active" data-grade="all">All</button><button class="filter-btn" data-grade="9">9</button><button class="filter-btn" data-grade="10">10</button><button class="filter-btn" data-grade="11">11</button><button class="filter-btn" data-grade="12">12</button></div>
+                    <div id="student-eligibility-filters" class="flex flex-wrap items-center gap-2"><span class="font-medium text-gray-600">Status:</span><button class="filter-btn active" data-status="all">All</button><button class="filter-btn" data-status="ineligible">Ineligible</button><button class="filter-btn" data-status="eligible">Eligible</button></div>
+                </div>
+                <div class="overflow-x-auto"><table class="fixed-table"><thead class="bg-gray-50"><tr><th class="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="studentName">Student Name <span class="sort-icon"></span></th><th class="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activities</th><th class="w-1/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="grade">Grade <span class="sort-icon"></span></th><th class="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th><th class="w-1/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="numFGrades">Failing <span class="sort-icon"></span></th><th class="w-1/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="unservedDetention">Detention <span class="sort-icon"></span></th><th class="w-1/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="totalAbsences">Absences <span class="sort-icon"></span></th></tr></thead><tbody id="student-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                <div id="no-students-message" class="text-center py-8 text-gray-500 hidden">No students match the current filters.</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allStudentData = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
+        let baselineKPIs = {};
+        const tooltip = document.getElementById('tooltip');
+
+        document.addEventListener('DOMContentLoaded', () => google.script.run.withSuccessHandler(initializeDashboard).withFailureHandler(handleError).getStudentData());
+        
+        function initializeDashboard(data) {
+            allStudentData = data;
+            baselineKPIs = calculateGroupKPIs(allStudentData);
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('dashboard-content').classList.remove('hidden');
+            
+            populateFilters();
+            setupGlobalFilters();
+            setupStudentListFilters();
+            setupSorting();
+            setupTooltips();
+            setupClearButtons();
+            
+            updateDashboard();
+            applyStudentListFilters();
+            updateSortIcons();
+        }
+
+        function handleError(error) { console.error("Dashboard Error:", error); document.getElementById('loading-state').innerHTML = `<p class="text-red-500 font-semibold">Error loading data.</p><p class="text-gray-600 mt-2">Please ensure the sheet '⭐Academics & Attendance Hub' exists and you have permission.</p>`; }
+
+        function calculateGroupKPIs(data) {
+            const totalStudents = data.length;
+            if (totalStudents === 0) return { totalStudents: 0, ineligibleStudents: 0, ineligibilityRate: 0, avgAbsences: 0, totalFGrades: 0 };
+            
+            const ineligibleStudents = data.filter(s => s.ineligible).length;
+            const totalAbsences = data.reduce((sum, s) => sum + s.totalAbsences, 0);
+            const totalFGrades = data.reduce((sum, s) => sum + s.numFGrades, 0);
+
+            return {
+                totalStudents: totalStudents,
+                ineligibleStudents: ineligibleStudents,
+                ineligibilityRate: (ineligibleStudents / totalStudents) * 100,
+                avgAbsences: totalAbsences / totalStudents,
+                totalFGrades: totalFGrades
+            };
+        }
+
+        function populateFilters() {
+            const activities = new Set(allStudentData.flatMap(s => (s.activity || '').split(',').map(a => a.trim()).filter(Boolean)));
+            const sortedActivities = [...activities].sort();
+            
+            const globalActivityFilter = document.getElementById('activity-filter');
+            sortedActivities.forEach(a => globalActivityFilter.innerHTML += `<option value="${a}">${a}</option>`);
+            
+            const studentActivityFilter = document.getElementById('student-activity-filter');
+            studentActivityFilter.innerHTML = '<option value="all">Filter by Activity / Team</option>';
+            sortedActivities.forEach(a => studentActivityFilter.innerHTML += `<option value="${a}">${a}</option>`);
+        }
+
+        function setupGlobalFilters() {
+            document.getElementById('global-filters').addEventListener('change', e => {
+                const { id, value } = e.target;
+                if (id === 'grade-filter') globalFilters.grade = value;
+                if (id === 'sped-filter') globalFilters.sped = value;
+                if (id === 'activity-filter') globalFilters.activity = value;
+                updateDashboard();
+            });
+        }
+        
+        function updateDashboard() {
+            let data = allStudentData;
+            if (globalFilters.grade !== 'all') data = data.filter(s => s.grade == globalFilters.grade);
+            if (globalFilters.sped === 'sped') data = data.filter(s => s.caseManager);
+            if (globalFilters.sped === 'gened') data = data.filter(s => !s.caseManager);
+            if (globalFilters.activity !== 'all') data = data.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(globalFilters.activity));
+            
+            renderKPIs(data);
+            renderCharts(data);
+        }
+
+        function renderKPIs(data) {
+            const filtersActive = Object.values(globalFilters).some(v => v !== 'all');
+            const currentKPIs = calculateGroupKPIs(data);
+
+            document.getElementById('total-students').textContent = currentKPIs.totalStudents;
+            document.getElementById('ineligible-students').textContent = currentKPIs.ineligibleStudents;
+            document.getElementById('ineligibility-rate').textContent = `${currentKPIs.ineligibilityRate.toFixed(1)}%`;
+            document.getElementById('avg-absences').textContent = currentKPIs.avgAbsences.toFixed(1);
+            document.getElementById('total-f-grades').textContent = currentKPIs.totalFGrades;
+
+            const kpiCardInfo = [
+                { id: 'kpi-ineligibility-rate-card', key: 'ineligibilityRate' },
+                { id: 'kpi-avg-absences-card', key: 'avgAbsences' },
+                { id: 'kpi-total-students-card', key: 'totalStudents' },
+                { id: 'kpi-ineligible-students-card', key: 'ineligibleStudents' },
+                { id: 'kpi-total-f-grades-card', key: 'totalFGrades' }
+            ];
+
+            kpiCardInfo.forEach(card => {
+                const cardEl = document.getElementById(card.id);
+                cardEl.classList.remove('clickable');
+                if (filtersActive) {
+                    cardEl.classList.add('clickable');
+                    cardEl.dataset.tooltipKey = card.key;
+                }
+            });
+        }
+
+        function generateComparisonTooltip(kpiKey) {
+            const formatter = (v) => {
+                if (kpiKey.includes('Rate')) return `${v.toFixed(1)}%`;
+                if (kpiKey.includes('Absences')) return v.toFixed(1);
+                return v;
+            };
+
+            const { grade, sped, activity } = globalFilters;
+            let comparisons = [];
+            
+            const currentData = allStudentData.filter(s => 
+                (grade === 'all' || s.grade == grade) &&
+                (sped === 'all' || (sped === 'sped' ? s.caseManager : !s.caseManager)) &&
+                (activity === 'all' || (s.activity || '').split(',').map(a => a.trim()).includes(activity))
+            );
+            const currentKpi = calculateGroupKPIs(currentData)[kpiKey];
+            
+            if (grade !== 'all' && (sped !== 'all' || activity !== 'all')) {
+                const gradeAllSubgroupsData = allStudentData.filter(s => s.grade == grade);
+                comparisons.push({ label: `Grade ${grade} (All Students)`, value: calculateGroupKPIs(gradeAllSubgroupsData)[kpiKey] });
+            }
+            if (sped !== 'all' && (grade !== 'all' || activity !== 'all')) {
+                 const spedAllSubgroupsData = allStudentData.filter(s => (sped === 'sped' ? s.caseManager : !s.caseManager));
+                 comparisons.push({ label: `${sped === 'sped' ? 'SPED' : 'GenEd'} (All Grades)`, value: calculateGroupKPIs(spedAllSubgroupsData)[kpiKey] });
+            }
+             if (activity !== 'all' && (grade !== 'all' || sped !== 'all')) {
+                const activityAllSubgroupsData = allStudentData.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(activity));
+                comparisons.push({ label: `${activity} (All Groups)`, value: calculateGroupKPIs(activityAllSubgroupsData)[kpiKey] });
+            }
+
+            let tooltipHtml = `<h4>Comparison Breakdowns</h4><ul><li><span>Current Filter:</span> <strong>${formatter(currentKpi)}</strong></li>`;
+            
+            const uniqueComparisons = _.uniqBy(comparisons, 'label').filter(c => Math.abs(c.value - currentKpi) > 0.01 || (c.value === 0 && currentKpi !== 0));
+            
+            uniqueComparisons.forEach(comp => {
+                tooltipHtml += `<li><span>${comp.label}:</span> <strong>${formatter(comp.value)}</strong></li>`;
+            });
+
+            if(Math.abs(baselineKPIs[kpiKey] - currentKpi) > 0.01 || (baselineKPIs[kpiKey] === 0 && currentKpi !== 0)) {
+              tooltipHtml += `<li><span>School-Wide:</span> <strong>${formatter(baselineKPIs[kpiKey])}</strong></li>`;
+            }
+            tooltipHtml += `</ul>`;
+            return tooltipHtml;
+        }
+
+        function renderCharts(data) {
+            const chartColors = { blue: 'rgba(59, 130, 246, 0.7)', red: 'rgba(239, 68, 68, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)', purple: 'rgba(139, 92, 246, 0.7)', orange: 'rgba(249, 115, 22, 0.7)', gray: 'rgba(107, 114, 128, 0.7)' };
+            Object.values(charts).forEach(chart => chart.destroy());
+
+            const totalUnexcused = data.reduce((sum, s) => sum + s.unexcusedAbsences, 0), totalTruancy = data.reduce((sum, s) => sum + s.truancyAbsences, 0), totalMedical = data.reduce((sum, s) => sum + s.medicalAbsences, 0), totalIllness = data.reduce((sum, s) => sum + s.illnessAbsences, 0);
+            charts.attendance = new Chart(document.getElementById('attendance-breakdown-chart'), { type: 'doughnut', data: { labels: ['Unexcused', 'Truancy', 'Medical', 'Illness'], datasets: [{ data: [totalUnexcused, totalTruancy, totalMedical, totalIllness], backgroundColor: [chartColors.yellow, chartColors.red, chartColors.blue, chartColors.green] }] }, options: { maintainAspectRatio: false, responsive: true } });
+
+            const failingOnly = data.filter(s => s.ineligible && s.isFailing && s.unservedDetention === 0).length, detentionOnly = data.filter(s => s.ineligible && !s.isFailing && s.unservedDetention > 0).length, both = data.filter(s => s.ineligible && s.isFailing && s.unservedDetention > 0).length;
+            charts.ineligibility = new Chart(document.getElementById('ineligibility-chart'), { type: 'doughnut', data: { labels: ['Failing Only', 'Detention Only', 'Both'], datasets: [{ data: [failingOnly, detentionOnly, both], backgroundColor: [chartColors.red, chartColors.orange, chartColors.purple] }] }, options: { maintainAspectRatio: false, responsive: true } });
+
+            const fGradeGroups = _.groupBy(data, 'numFGrades');
+            const correlationLabels = Object.keys(fGradeGroups).sort((a,b) => a-b);
+            const correlationData = correlationLabels.map(fCount => _.meanBy(fGradeGroups[fCount], 'totalAbsences') || 0);
+            charts.correlation = new Chart(document.getElementById('correlation-chart'), { type: 'bar', data: { labels: correlationLabels.map(l => `${l} F's`), datasets: [{ label: 'Average Absences', data: correlationData, backgroundColor: chartColors.blue }] }, options: { maintainAspectRatio: false, responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Average Absences (Periods)' } }, x: { title: { display: true, text: 'Number of Failing Grades' } } } } });
+            
+            const activityStudents = data.filter(s => s.activity), nonActivityStudents = data.filter(s => !s.activity);
+            charts.activity = new Chart(document.getElementById('activity-chart'), { type: 'bar', data: { labels: ['Ineligibility Rate (%)', 'Avg Absences (Periods)'], datasets: [{ label: `In Activity (${activityStudents.length})`, data: [calculateGroupKPIs(activityStudents).ineligibilityRate, calculateGroupKPIs(activityStudents).avgAbsences], backgroundColor: chartColors.blue }, { label: `Not in Activity (${nonActivityStudents.length})`, data: [calculateGroupKPIs(nonActivityStudents).ineligibilityRate, calculateGroupKPIs(nonActivityStudents).avgAbsences], backgroundColor: chartColors.gray }] }, options: { maintainAspectRatio: false, responsive: true, scales: { y: { beginAtZero: true } } } });
+        }
+        
+        function setupStudentListFilters() {
+            document.getElementById('student-search').addEventListener('keyup', e => { studentListFilters.search = e.target.value.toLowerCase(); applyStudentListFilters(); });
+            document.getElementById('student-activity-filter').addEventListener('change', e => { studentListFilters.activity = e.target.value; applyStudentListFilters(); });
+            const gradeFilterContainer = document.getElementById('student-grade-filters');
+            gradeFilterContainer.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { gradeFilterContainer.querySelector('.active').classList.remove('active'); e.target.classList.add('active'); studentListFilters.grade = e.target.dataset.grade; applyStudentListFilters(); } });
+            const eligibilityContainer = document.getElementById('student-eligibility-filters');
+            eligibilityContainer.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { eligibilityContainer.querySelector('.active').classList.remove('active'); e.target.classList.add('active'); studentListFilters.eligibility = e.target.dataset.status; applyStudentListFilters(); } });
+        }
+        
+        function setupSorting() {
+            document.querySelectorAll('thead th[data-sort]').forEach(header => {
+                header.addEventListener('click', () => {
+                    const sortKey = header.dataset.sort;
+                    if (studentListSort.key === sortKey) {
+                        studentListSort.order = studentListSort.order === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        studentListSort.key = sortKey;
+                        studentListSort.order = ['numFGrades', 'unservedDetention', 'totalAbsences', 'grade'].includes(sortKey) ? 'desc' : 'asc';
+                    }
+                    updateSortIcons();
+                    applyStudentListFilters();
+                });
+            });
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('thead .sort-icon').forEach(icon => icon.textContent = '');
+            const activeHeaderIcon = document.querySelector(`thead th[data-sort="${studentListSort.key}"] .sort-icon`);
+            if (activeHeaderIcon) activeHeaderIcon.textContent = studentListSort.order === 'asc' ? ' ▲' : ' ▼';
+        }
+
+        function applyStudentListFilters() {
+            let data = [...allStudentData];
+            if (studentListFilters.grade !== 'all') data = data.filter(s => s.grade == studentListFilters.grade);
+            if (studentListFilters.activity !== 'all') data = data.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(studentListFilters.activity));
+            if (studentListFilters.search) data = data.filter(s => s.studentName.toLowerCase().includes(studentListFilters.search));
+            if (studentListFilters.eligibility === 'eligible') data = data.filter(s => !s.ineligible);
+            if (studentListFilters.eligibility === 'ineligible') data = data.filter(s => s.ineligible);
+
+            const { key, order } = studentListSort;
+            data.sort((a, b) => {
+                let valA = a[key], valB = b[key];
+                if (typeof valA === 'string') { valA = valA.toLowerCase(); valB = b[key].toLowerCase(); }
+                if (valA < valB) return order === 'asc' ? -1 : 1;
+                if (valA > valB) return order === 'asc' ? 1 : -1;
+                return 0;
+            });
+            renderStudentList(data);
+        }
+
+        function renderStudentList(data) {
+            const listBody = document.getElementById('student-list'), noResults = document.getElementById('no-students-message');
+            if (data.length === 0) { listBody.innerHTML = ''; noResults.classList.remove('hidden'); return; }
+            noResults.classList.add('hidden');
+            listBody.innerHTML = data.map(s => `<tr>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div></td>
+                <td class="px-6 py-4 text-xs text-gray-500">${s.activity || ''}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${s.grade}</td>
+                <td class="px-6 py-4 text-sm"><span class="${s.ineligible ? 'ineligible-text' : 'eligible-text'}">${s.ineligible ? 'Ineligible' : 'Eligible'}</span></td>
+                <td class="px-6 py-4 text-sm text-gray-500 tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="failing">${s.numFGrades}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="detention">${s.unservedDetention} hrs</td>
+                <td class="px-6 py-4 text-sm text-gray-500 tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="absences">${s.totalAbsences} periods</td>
+            </tr>`).join('');
+        }
+        
+        function setupTooltips() {
+            document.body.addEventListener('click', e => {
+                const kpiCard = e.target.closest('.kpi-card.clickable');
+                const studentCell = e.target.closest('.tooltip-trigger');
+
+                if (kpiCard) {
+                    e.stopPropagation();
+                    const triggerId = kpiCard.id;
+                    if (tooltip.style.display === 'block' && tooltip.dataset.triggerId === triggerId) {
+                        hideTooltip(); return;
+                    }
+                    const key = kpiCard.dataset.tooltipKey;
+                    const html = generateComparisonTooltip(key);
+                    showTooltip(html, kpiCard, triggerId);
+                } else if (studentCell) {
+                    e.stopPropagation();
+                    const triggerId = `${studentCell.parentElement.rowIndex}-${studentCell.cellIndex}`;
+                    if (tooltip.style.display === 'block' && tooltip.dataset.triggerId === triggerId) {
+                        hideTooltip(); return;
+                    }
+                    const student = JSON.parse(studentCell.dataset.student);
+                    const type = studentCell.dataset.type;
+                    let content = '';
+                    if (type === 'failing' && student.numFGrades > 0) {
+                        const classes = student.failingClasses.split('\n').filter(Boolean).map(c => `<li>${c}</li>`).join('');
+                        content = `<h4>Failing Classes</h4><ul style="list-style: inside;">${classes}</ul>`;
+                    } else if (type === 'detention' && student.unservedDetention > 0) {
+                        content = `<h4>Detention Details</h4><ul><li><span>Discipline:</span> <strong>${student.disciplineDetention} hrs</strong></li><li><span>Attendance:</span> <strong>${student.attendanceDetention} hrs</strong></li></ul>`;
+                    } else if (type === 'absences' && student.totalAbsences > 0) {
+                        content = `<h4>Absence Details</h4><ul><li><span>Unexcused:</span> <strong>${student.unexcusedAbsences}</strong></li><li><span>Truancy:</span> <strong>${student.truancyAbsences}</strong></li><li><span>Medical:</span> <strong>${student.medicalAbsences}</strong></li><li><span>Illness:</span> <strong>${student.illnessAbsences}</strong></li></ul>`;
+                    }
+                    if(content) showTooltip(content, studentCell, triggerId);
+                } else if (tooltip.style.display === 'block') {
+                    hideTooltip();
+                }
+            });
+        }
+
+        function showTooltip(html, element, triggerId) {
+            tooltip.innerHTML = html;
+            tooltip.style.display = 'block';
+            tooltip.dataset.triggerId = triggerId;
+            const rect = element.getBoundingClientRect();
+            let top = rect.bottom + window.scrollY + 5;
+            let left = rect.left + window.scrollX;
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+            const tooltipRect = tooltip.getBoundingClientRect();
+            if (tooltipRect.right > window.innerWidth) tooltip.style.left = `${window.innerWidth - tooltipRect.width - 20}px`;
+            if (tooltipRect.bottom > (window.innerHeight - 20) ) tooltip.style.top = `${rect.top + window.scrollY - tooltipRect.height - 5}px`;
+            setTimeout(() => { tooltip.style.opacity = 1; }, 10);
+        }
+
+        function hideTooltip() {
+            tooltip.style.opacity = 0;
+            setTimeout(() => { 
+                tooltip.style.display = 'none'; 
+                tooltip.removeAttribute('data-trigger-id');
+            }, 200);
+        }
+
+        function setupClearButtons() {
+            document.getElementById('reset-global-filters-btn').addEventListener('click', () => {
+                document.getElementById('grade-filter').value = 'all';
+                document.getElementById('sped-filter').value = 'all';
+                document.getElementById('activity-filter').value = 'all';
+                globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
+                updateDashboard();
+            });
+
+            document.getElementById('reset-student-filters-btn').addEventListener('click', () => {
+                document.getElementById('student-search').value = '';
+                document.getElementById('student-activity-filter').value = 'all';
+                
+                document.querySelector('#student-grade-filters .filter-btn.active').classList.remove('active');
+                document.querySelector('#student-grade-filters .filter-btn[data-grade="all"]').classList.add('active');
+                
+                document.querySelector('#student-eligibility-filters .filter-btn.active').classList.remove('active');
+                document.querySelector('#student-eligibility-filters .filter-btn[data-status="all"]').classList.add('active');
+                
+                studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' };
+                applyStudentListFilters();
+            });
+        }
+
+    </script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+</body>
+</html>
+
