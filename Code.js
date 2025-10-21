@@ -226,8 +226,8 @@ function getStudentData() {
       return []; // No data if there are no students
     }
     
-    // Fetch data from column A (1) to U (21) to include all necessary fields
-    const range = sheet.getRange(2, 1, lastRow - 1, 21);
+    // Fetch data from column A (1) to AA (27) to include all necessary fields
+    const range = sheet.getRange(2, 1, lastRow - 1, 27);
     const values = range.getValues();
 
     const headers = [
@@ -235,7 +235,9 @@ function getStudentData() {
       "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
       "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
       "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
-      "totalAbsenceDays", "dishonestyReferrals"
+      "totalAbsenceDays", "dishonestyReferrals", "tier2Interventions",
+      "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
+      "totalClubMeetingsAttended", "clubsAttended"
     ];
 
     const data = values.map(row => {
@@ -245,7 +247,7 @@ function getStudentData() {
         // Perform necessary type conversions for charts and display
         if (['ineligible', 'isFailing'].includes(key)) {
           obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
-        } else if (['grade', 'id', 'unservedDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences'].includes(key)) {
+        } else if (['grade', 'id', 'unservedDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended'].includes(key)) {
           // Ensure that numbers are parsed correctly, defaulting to 0 if blank or non-numeric
           const parsedValue = parseInt(value, 10);
           obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
