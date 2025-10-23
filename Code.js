@@ -91,53 +91,109 @@ function sendCounselorSummaryEmails() {
     return;
   }
 
-  // 3. Assign students to their respective counselors
-  studentData.forEach(student => {
-    // Assumes student names are in "Last, First" format
-    const lastName = student.name.split(',')[0].trim();
-    if (!lastName) return; // Skip if name format is unexpected
+  // 3. Get Spartan Hour Data
+  const spartanHourSheet = ss.getSheetByName("Spartan Hour Intervention");
+  const spartanHourData = new Map();
+  if (spartanHourSheet) {
+    const lastRow = spartanHourSheet.getLastRow();
+    if (lastRow >= 2) {
+      // Columns: C (Student Name), H (Requests), P (Skipped)
+      const range = spartanHourSheet.getRange("B2:P" + lastRow).getValues();
+      const today = new Date();
+      const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0); // Normalize to the beginning of the day for an accurate 7-day window
 
-    // Find the correct counselor for this student by iterating through the sorted counselor list
+      const processColumn = (columnData) => {
+        if (!columnData) return '';
+        const delimiters = /[\n,]/;
+        return columnData.toString().split(delimiters).map(entry => {
+          entry = entry.trim();
+          if (!entry) return null;
+          const match = entry.match(/\((\d{1,2}\/\d{1,2})\)/);
+          if (match && match[1]) {
+            const dateParts = match[1].split('/');
+            const month = parseInt(dateParts[0], 10) - 1; // JavaScript months are 0-indexed
+            const day = parseInt(dateParts[1], 10);
+            const date = new Date(today.getFullYear(), month, day);
+
+            if (date > today) {
+              date.setFullYear(date.getFullYear() - 1);
+            }
+            if (date >= sevenDaysAgo && date <= today) {
+              return entry;
+            }
+          }
+          return null;
+        }).filter(Boolean).join('<br>');
+      };
+
+      range.forEach(row => {
+        const studentName = row[1]; // Col C (index 1 of a range starting at B)
+        if (!studentName) return;
+
+        const requests = row[6]; // Col H
+        const skipped = row[14]; // Col P
+
+        const recentRequests = processColumn(requests);
+        const recentSkipped = processColumn(skipped);
+
+        if (recentRequests || recentSkipped) {
+          const key = studentName.trim().toLowerCase();
+          if (!spartanHourData.has(key)) {
+            spartanHourData.set(key, { requests: '', skipped: '' });
+          }
+          const existingData = spartanHourData.get(key);
+          if (recentRequests) {
+            existingData.requests = existingData.requests ? `${existingData.requests}<br>${recentRequests}` : recentRequests;
+          }
+          if (recentSkipped) {
+            existingData.skipped = existingData.skipped ? `${existingData.skipped}<br>${recentSkipped}` : recentSkipped;
+          }
+        }
+      });
+    }
+  }
+
+  // 4. Assign students to their respective counselors
+  studentData.forEach(student => {
+    const lastName = student.name.split(',')[0].trim();
+    if (!lastName) return;
+
     for (let i = 0; i < counselorData.length; i++) {
       const currentCounselor = counselorData[i];
       const nextCounselor = counselorData[i + 1];
-
       const isAfterCurrentStart = lastName.localeCompare(currentCounselor.alphaStart, 'en', { sensitivity: 'base' }) >= 0;
-      
+
       if (isAfterCurrentStart) {
-        // If it's in range for the current counselor, check if it comes before the next counselor's start.
         if (nextCounselor) {
           const isBeforeNextStart = lastName.localeCompare(nextCounselor.alphaStart, 'en', { sensitivity: 'base' }) < 0;
           if (isBeforeNextStart) {
             currentCounselor.students.push(student);
-            break; // Counselor found, move to the next student
+            break;
           }
         } else {
-          // This is the last counselor in the list, so they get all remaining students.
           currentCounselor.students.push(student);
-          break; // Counselor found, move to the next student
+          break;
         }
       }
     }
   });
 
-  // 4. Generate and send an email for each counselor
+  // 5. Generate and send an email for each counselor
   counselorData.forEach(counselor => {
     if (counselor.students.length === 0) {
       Logger.log(`No students to report for ${counselor.name}. Skipping email.`);
-      return; // This acts like 'continue' for a forEach loop
+      return;
     }
 
-    // Sort students alphabetically for a clean list
     counselor.students.sort((a, b) => a.name.localeCompare(b.name));
 
-    // Build the HTML table rows from the student data
     const htmlTableRows = counselor.students.map(student => {
-      // Each class name is wrapped in a div to prevent it from wrapping onto a new line.
-      // The div's block display also ensures each class is on its own line.
-      const formattedClassList = student.failing.toString().split('\n').map(className => 
+      const formattedClassList = student.failing.toString().split('\n').map(className =>
         `<div style="white-space: nowrap;">${className.trim()}</div>`
       ).join('');
+
+      const spartanData = spartanHourData.get(student.name.trim().toLowerCase()) || { requests: '', skipped: '' };
 
       return `
         <tr>
@@ -146,6 +202,8 @@ function sendCounselorSummaryEmails() {
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif;">${formattedClassList}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif; text-align: center; white-space: nowrap;">${student.detention}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif; text-align: center; white-space: nowrap;">${student.absences}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif;">${spartanData.requests}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif;">${spartanData.skipped}</td>
         </tr>
       `;
     }).join('');
@@ -154,10 +212,10 @@ function sendCounselorSummaryEmails() {
     const timestampForBody = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy 'at' h:mm a");
     const counselorFirstName = counselor.name.split(' ')[0];
 
-    const subject = `Student Summary for Your Caseload - ${timestampForSubject}`;
+    const subject = `Weekly Academic Summary for Your Alpha List - ${timestampForSubject}`;
     const htmlBody = `
       <!DOCTYPE html><html><body style="margin: 0; padding: 0; background-color: #f0f0f0; font-family: Arial, sans-serif;">
-        <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="800" style="border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           <tr><td align="center" style="padding: 40px 0 30px 0; background-color: #4356a0; color: #ffffff;"><h1 style="font-size: 24px; margin: 0;">Weekly Academic Summary Report</h1></td></tr>
           <tr><td style="padding: 20px 30px 40px 30px;">
             <table border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -169,11 +227,13 @@ function sendCounselorSummaryEmails() {
                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border-radius: 4px; overflow: hidden; border: 1px solid #ddd;">
                   <thead>
                     <tr style="background-color: #f2f2f2;">
-                      <th style="padding: 10px 12px; text-align: left; font-size: 10px; width: 25%;">Student Name</th>
-                      <th style="padding: 10px 12px; text-align: center; font-size: 10px; width: 10%;">Grade</th>
-                      <th style="padding: 10px 12px; text-align: left; font-size: 10px; width: 35%;">Failing Class(es)</th>
-                      <th style="padding: 10px 12px; text-align: center; font-size: 10px; width: 15%;">Unserved Detention</th>
-                      <th style="padding: 10px 12px; text-align: center; font-size: 10px; width: 15%;">Total Absences</th>
+                      <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Student Name</th>
+                      <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Grade</th>
+                      <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Failing Class(es)</th>
+                      <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Unserved Detention</th>
+                      <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Total Absences</th>
+                      <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Spartan Hour Request (Past 7 days)</th>
+                      <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Skipped Session(s) (Past 7 days)</th>
                     </tr>
                   </thead>
                   <tbody>${htmlTableRows}</tbody>

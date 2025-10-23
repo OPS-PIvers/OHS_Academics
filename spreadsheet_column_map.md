@@ -1,3 +1,5 @@
+
+Tab name: ⭐Academics & Attendance Hub
 INDEX : COLUMN : HEADING : DATA TYPE
 
 0 : A : Ineligible (Failing grade and/or unserved detention ): Checkbox
@@ -27,3 +29,32 @@ INDEX : COLUMN : HEADING : DATA TYPE
 24 : Y : Spartan Hour Reqs High Priority : Number (1) 
 25 : Z : Total Club Meetings Attended : Number (1) : 
 26 : AA : Clubs Attended : Text
+
+Tab name: Spartan Hour Intervention
+0 : A : Student last : Text
+1 : B : Student first : Test
+2 : C : Last, First : Text
+3 : D : Grade : Number (1)
+4 : E : Signup :  Number (1)
+5 : F : Teacher Request :  Number (1)
+6 : G : Assigned :  Number (1)
+7 : H : Teachers Requesting : Text ["Teacher Name (M/DD)"]
+8 : I : Priority 0 :  Number (1)
+9 : J : Priority 1 :  Number (1)
+10 : K : Priority 2 :  Number (1)
+11 : L : Priority 3 :  Number (1)
+12 : M : Skipped Teacher Requested Session :  Number (1)
+13 : N : # of club meetings attended :  Number (1)
+14 : O : Clubs attended (csv) : Text ["Club name (M/DD)"]
+15 : P : Skipped Sessions : Text ["Teacher Name (M/DD)"]
+16 : Q :  : 
+17 : R :  : 
+18 : S :  : 
+19 : T :  : 
+20 : U :  : 
+21 : V :  : 
+22 : W :  : 
+23 : X :  : 
+24 : Y :  : 
+25 : Z :  : 
+26 : AA :  : 
