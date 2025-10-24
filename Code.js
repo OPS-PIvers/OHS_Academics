@@ -269,13 +269,13 @@ function sendTier2InstructorEmails() {
     const timestampForSubject = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy");
     const instructorFirstName = instructor.fullName.split(' ')[0];
 
-    const subject = `Weekly Student Workload Summary - ${timestampForSubject}`;
+    const subject = `Weekly Tier 2 Summary - ${timestampForSubject}`;
     const htmlBody = `
       <!DOCTYPE html><html><head><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin: 0; padding: 20px; background-color: #f0f0f0; font-family: 'Roboto', sans-serif;">
         <div style="max-width: 800px; margin: auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           <h1 style="font-size: 24px; margin: 0 0 20px; color: #4356a0;">Weekly Student Summary</h1>
           <p style="margin: 0 0 20px; font-size: 16px; color: #333;">Hi ${instructorFirstName},</p>
-          <p style="margin: 0 0 30px; font-size: 16px; color: #333;">Here is the weekly summary for the students on your workload:</p>
+          <p style="margin: 0 0 30px; font-size: 16px; color: #333;">Here is the weekly summary for the students you serve in tier 2:</p>
           ${studentCardsHtml}
           <p style="margin-top: 30px; font-size: 12px; color: #7f8c8d; text-align: center;">This is an automated notification from the OHS Academics & Attendance Hub.</p>
         </div>
