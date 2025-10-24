@@ -23,15 +23,15 @@ Tab name: ⭐Academics & Attendance Hub
 17 : R : Truancy Absences (Total) : Number (1)
 18 : S : Total Absences (Class Periods) : Number (1.0) 
 19 : T : Total Absences (Days) : Number (1.0)
-20 : U : Referrals (Total - Academic Dishonesty) : Number (1) 
-21 : V : Tier 2 Interventions (Current) : Text
-22 : W : Spartan Hour Total Requests : Number (1)
-23 : X : Spartan Hour Skipped Requests : Number (1) 
-24 : Y : Spartan Hour Reqs High Priority : Number (1) 
-25 : Z : Total Club Meetings Attended : Number (1) : 
-26 : AA : Clubs Attended : Text
-27 : AB : Tier 2 Instructor  / Advisor : Text (Teacher Last Name)
-28 : AC : Attendance Letters : Text ["L# (MM/DD), L# (MM/DD)"]
+20 : U : Attendance Letters : Text ["L# (MM/DD), L# (MM/DD)"]
+21 : V : Referrals (Total - Academic Dishonesty) : Number (1) 
+22 : W : Tier 2 Interventions (Current) : Text
+23 : X : Tier 2 Instructor  / Advisor : Text (Teacher Last Name)
+24 : Y : Spartan Hour Total Requests : Number (1)
+25 : Z : Spartan Hour Skipped Requests : Number (1) 
+26 : AA : Spartan Hour Reqs High Priority : Number (1) 
+27 : AB : Total Club Meetings Attended : Number (1) : 
+28 : AC : Clubs Attended : Text
 
 Tab name: Spartan Hour Intervention
 0 : A : Student last : Text

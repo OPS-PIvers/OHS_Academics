@@ -66,10 +66,10 @@ function sendTier2InstructorEmails() {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
       // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [AB]
-      const studentRange = hubSheet.getRange("B2:AB" + hubLastRow).getValues();
+      const studentRange = hubSheet.getRange("B2:AC" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
-        const tier2Instructor = row[26]; // Index 26 -> Col AB
+        const tier2Instructor = row[22]; // Index 22 -> Col X
 
         // Only include students who have an assigned Tier 2 instructor
         if (studentName && tier2Instructor) {
@@ -571,9 +571,9 @@ function getStudentData() {
       "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
       "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
       "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
-      "totalAbsenceDays", "dishonestyReferrals", "tier2Interventions",
-      "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
-      "totalClubMeetingsAttended", "clubsAttended", "tier2Instructor", "attendanceLetters"
+      "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
+      "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
+      "totalClubMeetingsAttended", "clubsAttended"
     ];
 
     const data = values.map(row => {
