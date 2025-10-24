@@ -562,8 +562,8 @@ function getStudentData() {
       return []; // No data if there are no students
     }
     
-    // Fetch data from column A (1) to AA (27) to include all necessary fields
-    const range = sheet.getRange(2, 1, lastRow - 1, 27);
+    // Fetch data from column A (1) to AC (29) to include all necessary fields
+    const range = sheet.getRange(2, 1, lastRow - 1, 29);
     const values = range.getValues();
 
     const headers = [
@@ -573,7 +573,7 @@ function getStudentData() {
       "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
       "totalAbsenceDays", "dishonestyReferrals", "tier2Interventions",
       "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
-      "totalClubMeetingsAttended", "clubsAttended"
+      "totalClubMeetingsAttended", "clubsAttended", "tier2Instructor", "attendanceLetters"
     ];
 
     const data = values.map(row => {

@@ -31,10 +31,11 @@ Tab name: ⭐Academics & Attendance Hub
 25 : Z : Total Club Meetings Attended : Number (1) : 
 26 : AA : Clubs Attended : Text
 27 : AB : Tier 2 Instructor  / Advisor : Text (Teacher Last Name)
+28 : AC : Attendance Letters : Text ["L# (MM/DD), L# (MM/DD)"]
 
 Tab name: Spartan Hour Intervention
 0 : A : Student last : Text
-1 : B : Student first : Test
+1 : B : Student first : Text
 2 : C : Last, First : Text
 3 : D : Grade : Number (1)
 4 : E : Signup :  Number (1)
@@ -67,7 +68,7 @@ Tab name: Admin Settings
 11 : L : Tier 2 Instructors / Advisors Email : Text
 
 Tab name: Absences (total)
-0 : A : Student Name : Text
+0 : A : Student Name (Last, First): Text
 1 : B : Grade : Number (11)
 2 : C : P0 : Number (0)
 3 : D : P1 : Number (0)
@@ -78,6 +79,17 @@ Tab name: Absences (total)
 8 : I : P6 : Number (0)
 9 : J : P7 : Number (0)
 10 : K : SpHr : Number (0)
+
+Tab name: Attendance Letters
+0 : A : NAME (Last, First): Text
+1 : B : L1 : Date (MM/DD/YY)
+2 : C : l2 : Date (MM/DD/YY)
+3 : D : Dr Note Req : Date (MM/DD/YY)
+4 : E : L3 : Date (MM/DD/YY)
+5 : F : BASIL : Date (MM/DD/YY)
+6 : G : BASIL 2 : Date (MM/DD/YY)
+7 : H : [BLANK] :
+8 : I : Med Note List as of [MM/DD] ("Last, First"):  Text
 
 Tab name: 
 0 : A :  : 
