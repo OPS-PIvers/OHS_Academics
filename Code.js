@@ -205,21 +205,34 @@ function sendTier2InstructorEmails() {
     const studentCardsHtml = instructor.students.map(student => {
       const spartanData = spartanHourData.get(student.name.trim().toLowerCase()) || { requests: 0, skipped: 0, signups: 0 };
       const studentAbsenceData = absenceData.get(student.name.trim().toLowerCase()) || { p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, sphr: 0 };
+      const isFailing = student.failing && student.failing.length > 0;
+
+      const getAbsenceColor = (absences) => {
+        if (absences >= 5) return '#f8d7da'; // Red for high absences
+        if (absences >= 3) return '#fff3cd'; // Yellow for medium absences
+        return '#ffffff'; // White for low absences
+      };
 
       return `
-        <div style="border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9;">
-          <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 18px; color: #333;">${student.name}</h3>
-          <p style="margin: 0 0 8px;"><strong>Grade:</strong> ${student.grade}</p>
-          <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> ${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</p>
-          <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> ${student.detention} hours</p>
-          
-          <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 16px; color: #555;">Spartan Hour Summary (Last 7 Days)</h4>
-          <ul style="margin: 0; padding-left: 20px;">
-            <li><strong>Requests:</strong> ${spartanData.requests}</li>
-            <li><strong>Sign-ups:</strong> ${spartanData.signups}</li>
-            <li><strong>Skipped Sessions:</strong> ${spartanData.skipped}</li>
-          </ul>
-
+        <div style="border: 1px solid ${isFailing ? '#d9534f' : '#ddd'}; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9; font-family: 'Roboto', sans-serif;">
+          <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 20px; color: #333; font-weight: 500;">${student.name}</h3>
+          <table style="width: 100%;">
+            <tr>
+              <td style="width: 50%; vertical-align: top; padding-right: 10px;">
+                <p style="margin: 0 0 8px;"><strong>Grade:</strong> ${student.grade}</p>
+                <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
+                <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
+              </td>
+              <td style="width: 50%; vertical-align: top; padding-left: 10px;">
+                <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 16px; color: #555;">Spartan Hour Summary (Last 7 Days)</h4>
+                <ul style="margin: 0; padding-left: 20px; list-style-type: none;">
+                  <li><strong>Requests:</strong> ${spartanData.requests || '0'}</li>
+                  <li><strong>Sign-ups:</strong> ${spartanData.signups || '0'}</li>
+                  <li><strong>Skipped Sessions:</strong> ${spartanData.skipped || '0'}</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
           <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 16px; color: #555;">Absences by Period</h4>
           <table style="width: 100%; border-collapse: collapse; text-align: center;">
             <thead>
@@ -237,15 +250,15 @@ function sendTier2InstructorEmails() {
             </thead>
             <tbody>
               <tr>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p0}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p1}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p2}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p3}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p4}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p5}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p6}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p7}</td>
-                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.sphr}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p0)};">${studentAbsenceData.p0}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p1)};">${studentAbsenceData.p1}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p2)};">${studentAbsenceData.p2}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p3)};">${studentAbsenceData.p3}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p4)};">${studentAbsenceData.p4}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p5)};">${studentAbsenceData.p5}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p6)};">${studentAbsenceData.p6}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p7)};">${studentAbsenceData.p7}</td>
+                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.sphr)};">${studentAbsenceData.sphr}</td>
               </tr>
             </tbody>
           </table>
@@ -258,7 +271,7 @@ function sendTier2InstructorEmails() {
 
     const subject = `Weekly Student Workload Summary - ${timestampForSubject}`;
     const htmlBody = `
-      <!DOCTYPE html><html><body style="margin: 0; padding: 20px; background-color: #f0f0f0; font-family: Arial, sans-serif;">
+      <!DOCTYPE html><html><head><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin: 0; padding: 20px; background-color: #f0f0f0; font-family: 'Roboto', sans-serif;">
         <div style="max-width: 800px; margin: auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           <h1 style="font-size: 24px; margin: 0 0 20px; color: #4356a0;">Weekly Student Summary</h1>
           <p style="margin: 0 0 20px; font-size: 16px; color: #333;">Hi ${instructorFirstName},</p>
