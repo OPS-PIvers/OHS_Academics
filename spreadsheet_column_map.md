@@ -1,7 +1,8 @@
 
-Tab name: ⭐Academics & Attendance Hub
+Tab name: 
 INDEX : COLUMN : HEADING : DATA TYPE
 
+Tab name: ⭐Academics & Attendance Hub
 0 : A : Ineligible (Failing grade and/or unserved detention ): Checkbox
 1 : B : Student Name (Last, First) : Text
 2 : C : Grade : Number (1)
@@ -29,6 +30,7 @@ INDEX : COLUMN : HEADING : DATA TYPE
 24 : Y : Spartan Hour Reqs High Priority : Number (1) 
 25 : Z : Total Club Meetings Attended : Number (1) : 
 26 : AA : Clubs Attended : Text
+27 : AB : Tier 2 Instructor  / Advisor : Text (Teacher Last Name)
 
 Tab name: Spartan Hour Intervention
 0 : A : Student last : Text
@@ -47,6 +49,53 @@ Tab name: Spartan Hour Intervention
 13 : N : # of club meetings attended :  Number (1)
 14 : O : Clubs attended (csv) : Text ["Club name (M/DD)"]
 15 : P : Skipped Sessions : Text ["Teacher Name (M/DD)"]
+16 : Q : Student Signup / Drop-in : Text ["Teacher Name (M/DD)]
+17 : R : Skipped Sessions (Signup) : Text ["Teacher Name (M/DD)]
+
+Tab name: Admin Settings
+0 : A : Admin Name : Text
+1 : B : Admin Email : Text
+2 : C : Case Manager First : Text
+3 : D : Case Manager Last : Text
+4 : E : Case Manager Email : Text
+5 : F : Counselor Name : Text
+6 : G : Counselor Email : Text
+7 : H : Counselor Alpha Start : Text
+8 : I : Counselor Alpha End : Text
+9 : J : Tier 2 Instructors / Advisors : Text
+10 : K : Tier 2 Intervention : Text
+11 : L : Tier 2 Instructors / Advisors Email : Text
+
+Tab name: Absences (total)
+0 : A : Student Name : Text
+1 : B : Grade : Number (11)
+2 : C : P0 : Number (0)
+3 : D : P1 : Number (0)
+4 : E : P2 : Number (0)
+5 : F : P3 : Number (0)
+6 : G : P4 : Number (0)
+7 : H : P5 : Number (0)
+8 : I : P6 : Number (0)
+9 : J : P7 : Number (0)
+10 : K : SpHr : Number (0)
+
+Tab name: 
+0 : A :  : 
+1 : B :  : 
+2 : C :  : 
+3 : D :  : 
+4 : E :  :  
+5 : F :  :  
+6 : G :  :  
+7 : H :  : 
+8 : I :  :  
+9 : J :  :  
+10 : K :  :  
+11 : L :  :  
+12 : M :  :  
+13 : N :  :  
+14 : O :  : 
+15 : P :  : 
 16 : Q :  : 
 17 : R :  : 
 18 : S :  : 

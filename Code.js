@@ -7,6 +7,282 @@
  */
 
 // ===============================================================
+// NEW CODE FOR TIER 2 INSTRUCTOR SUMMARY EMAILS
+// ===============================================================
+
+/**
+ * Scans student data and sends a summary email to each Tier 2 instructor with their assigned students.
+ * This function is designed to be run by a time-based trigger.
+ */
+function sendTier2InstructorEmails() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const adminSheet = ss.getSheetByName("Admin Settings");
+  const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
+
+  if (!adminSheet || !hubSheet) {
+    Logger.log("Error: Could not find one of the required sheets ('Admin Settings' or '⭐Academics & Attendance Hub').");
+    return;
+  }
+
+  // 1. Get Tier 2 Instructor Data from Admin Settings sheet
+  let instructorData = [];
+  try {
+    const adminLastRow = adminSheet.getLastRow();
+    if (adminLastRow < 2) {
+      Logger.log("No instructor data found in 'Admin Settings' sheet.");
+      return;
+    }
+    // Assumes Tier 2 Instructor Name (J), Email (L)
+    const instructorRange = adminSheet.getRange("J2:L" + adminLastRow).getValues();
+    
+    instructorData = instructorRange.map(row => {
+      const fullName = row[0];
+      const email = row[2];
+      if (fullName && email) {
+        const nameParts = fullName.trim().split(' ');
+        const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+        return {
+          fullName: fullName.trim(),
+          lastName: lastName.trim().toLowerCase(),
+          email: email.trim(),
+          students: [] // Initialize an empty array to hold students
+        };
+      }
+      return null;
+    }).filter(Boolean); // Filter out any null entries from empty rows
+
+    if (instructorData.length === 0) {
+      Logger.log("No valid Tier 2 instructor entries found.");
+      return;
+    }
+  } catch (e) {
+    Logger.log(`Error reading Tier 2 instructor data: ${e.toString()}`);
+    return;
+  }
+
+  // 2. Get all student data from the Hub
+  const studentData = [];
+  try {
+    const hubLastRow = hubSheet.getLastRow();
+    if (hubLastRow >= 2) {
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [AB]
+      const studentRange = hubSheet.getRange("B2:AB" + hubLastRow).getValues();
+      studentRange.forEach(row => {
+        const studentName = row[0]; // Index 0 of range -> Col B
+        const tier2Instructor = row[26]; // Index 26 -> Col AB
+
+        // Only include students who have an assigned Tier 2 instructor
+        if (studentName && tier2Instructor) {
+          studentData.push({
+            name: studentName,
+            grade: row[1],             // Index 1 -> Col C
+            detention: row[5] || '0',  // Index 5 -> Col G
+            failing: row[10] || '',   // Index 10 -> Col L
+            instructor: tier2Instructor.trim()
+          });
+        }
+      });
+    }
+  } catch (e) {
+    Logger.log(`Error reading student data: ${e.toString()}`);
+    return;
+  }
+
+  // 3. Get Spartan Hour Data
+  const spartanHourSheet = ss.getSheetByName("Spartan Hour Intervention");
+  const spartanHourData = new Map();
+  if (spartanHourSheet) {
+    const lastRow = spartanHourSheet.getLastRow();
+    if (lastRow >= 2) {
+      // Columns: C (Student Name), H (Requests), P (Skipped), Q (Signups)
+      const range = spartanHourSheet.getRange("C2:Q" + lastRow).getValues();
+      const today = new Date();
+      const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0); // Normalize to the beginning of the day for an accurate 7-day window
+
+      const processColumn = (columnData) => {
+        if (!columnData) return '';
+        const delimiters = /[\n,]/;
+        return columnData.toString().split(delimiters).map(entry => {
+          entry = entry.trim();
+          if (!entry) return null;
+          const match = entry.match(/\((\d{1,2}\/\d{1,2})\)/);
+          if (match && match[1]) {
+            const dateParts = match[1].split('/');
+            const month = parseInt(dateParts[0], 10) - 1; // JavaScript months are 0-indexed
+            const day = parseInt(dateParts[1], 10);
+            const date = new Date(today.getFullYear(), month, day);
+
+            if (date > today) {
+              date.setFullYear(date.getFullYear() - 1);
+            }
+            if (date >= sevenDaysAgo && date <= today) {
+              return entry;
+            }
+          }
+          return null;
+        }).filter(Boolean).join('<br>');
+      };
+
+      range.forEach(row => {
+        const studentName = row[0]; // Col C
+        if (!studentName) return;
+
+        const requests = row[5]; // Col H
+        const skipped = row[13]; // Col P
+        const signups = row[14]; // Col Q
+
+        const recentRequests = processColumn(requests);
+        const recentSkipped = processColumn(skipped);
+        const recentSignups = processColumn(signups);
+
+        if (recentRequests || recentSkipped || recentSignups) {
+          const key = studentName.trim().toLowerCase();
+          if (!spartanHourData.has(key)) {
+            spartanHourData.set(key, { requests: '', skipped: '', signups: '' });
+          }
+          const existingData = spartanHourData.get(key);
+          if (recentRequests) {
+            existingData.requests = existingData.requests ? `${existingData.requests}<br>${recentRequests}` : recentRequests;
+          }
+          if (recentSkipped) {
+            existingData.skipped = existingData.skipped ? `${existingData.skipped}<br>${recentSkipped}` : recentSkipped;
+          }
+          if (recentSignups) {
+            existingData.signups = existingData.signups ? `${existingData.signups}<br>${recentSignups}` : recentSignups;
+          }
+        }
+      });
+    }
+  }
+
+  // 4. Get Absence Data
+  const absenceSheet = ss.getSheetByName("Absences (total)");
+  const absenceData = new Map();
+  if (absenceSheet) {
+    const lastRow = absenceSheet.getLastRow();
+    if (lastRow >= 2) {
+      // Columns: A (Student Name), C-K (Periods)
+      const range = absenceSheet.getRange("A2:K" + lastRow).getValues();
+      range.forEach(row => {
+        const studentName = row[0];
+        if (studentName) {
+          const key = studentName.trim().toLowerCase();
+          absenceData.set(key, {
+            p0: row[2] || 0,
+            p1: row[3] || 0,
+            p2: row[4] || 0,
+            p3: row[5] || 0,
+            p4: row[6] || 0,
+            p5: row[7] || 0,
+            p6: row[8] || 0,
+            p7: row[9] || 0,
+            sphr: row[10] || 0,
+          });
+        }
+      });
+    }
+  }
+
+  // 5. Assign students to their respective instructors
+  studentData.forEach(student => {
+    const instructorLastName = student.instructor.trim().toLowerCase();
+    const instructor = instructorData.find(inst => inst.lastName === instructorLastName);
+    if (instructor) {
+      instructor.students.push(student);
+    }
+  });
+
+  // 6. Generate and send an email for each instructor
+  instructorData.forEach(instructor => {
+    if (instructor.students.length === 0) {
+      Logger.log(`No students to report for ${instructor.name}. Skipping email.`);
+      return;
+    }
+
+    instructor.students.sort((a, b) => a.name.localeCompare(b.name));
+
+    const studentCardsHtml = instructor.students.map(student => {
+      const spartanData = spartanHourData.get(student.name.trim().toLowerCase()) || { requests: 0, skipped: 0, signups: 0 };
+      const studentAbsenceData = absenceData.get(student.name.trim().toLowerCase()) || { p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, sphr: 0 };
+
+      return `
+        <div style="border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9;">
+          <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 18px; color: #333;">${student.name}</h3>
+          <p style="margin: 0 0 8px;"><strong>Grade:</strong> ${student.grade}</p>
+          <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> ${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</p>
+          <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> ${student.detention} hours</p>
+          
+          <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 16px; color: #555;">Spartan Hour Summary (Last 7 Days)</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            <li><strong>Requests:</strong> ${spartanData.requests}</li>
+            <li><strong>Sign-ups:</strong> ${spartanData.signups}</li>
+            <li><strong>Skipped Sessions:</strong> ${spartanData.skipped}</li>
+          </ul>
+
+          <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 16px; color: #555;">Absences by Period</h4>
+          <table style="width: 100%; border-collapse: collapse; text-align: center;">
+            <thead>
+              <tr style="background-color: #eee;">
+                <th style="padding: 4px; border: 1px solid #ddd;">P0</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">P1</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">P2</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">P3</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">P4</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">P5</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">P6</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">P7</th>
+                <th style="padding: 4px; border: 1px solid #ddd;">SpHr</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p0}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p1}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p2}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p3}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p4}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p5}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p6}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.p7}</td>
+                <td style="padding: 4px; border: 1px solid #ddd;">${studentAbsenceData.sphr}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }).join('');
+
+    const timestampForSubject = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy");
+    const instructorFirstName = instructor.fullName.split(' ')[0];
+
+    const subject = `Weekly Student Workload Summary - ${timestampForSubject}`;
+    const htmlBody = `
+      <!DOCTYPE html><html><body style="margin: 0; padding: 20px; background-color: #f0f0f0; font-family: Arial, sans-serif;">
+        <div style="max-width: 800px; margin: auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <h1 style="font-size: 24px; margin: 0 0 20px; color: #4356a0;">Weekly Student Summary</h1>
+          <p style="margin: 0 0 20px; font-size: 16px; color: #333;">Hi ${instructorFirstName},</p>
+          <p style="margin: 0 0 30px; font-size: 16px; color: #333;">Here is the weekly summary for the students on your workload:</p>
+          ${studentCardsHtml}
+          <p style="margin-top: 30px; font-size: 12px; color: #7f8c8d; text-align: center;">This is an automated notification from the OHS Academics & Attendance Hub.</p>
+        </div>
+      </body></html>
+    `;
+
+    try {
+      MailApp.sendEmail({
+        to: instructor.email,
+        subject: subject,
+        htmlBody: htmlBody
+      });
+      Logger.log(`Successfully sent summary email to ${instructor.name} at ${instructor.email}`);
+    } catch (e) {
+      Logger.log(`Failed to send email to ${instructor.name}. Error: ${e.toString()}`);
+    }
+  });
+}
+
+// ===============================================================
 // NEW CODE FOR COUNSELOR SUMMARY EMAILS
 // ===============================================================
 
