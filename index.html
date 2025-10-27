@@ -65,66 +65,77 @@
         </div>
 
         <main id="dashboard-content" class="hidden">
-             <div class="card mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-700">Global Dashboard Filters</h2>
-                    <button id="reset-global-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
-                </div>
-                <div id="global-filters" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="grade-filter" class="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
-                        <select id="grade-filter" class="filter-select w-full"><option value="all">All Grades</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select>
+            <div class="mb-6 border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button id="tab-students" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-white border-white">Student List</button>
+                    <button id="tab-visuals" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Data Visualizations</button>
+                </nav>
+            </div>
+
+            <div id="tab-content-students">
+                <div class="card mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Student Lookup Filters</h2>
+                        <button id="reset-student-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
                     </div>
-                    <div>
-                        <label for="sped-filter" class="block text-sm font-medium text-gray-700 mb-1">Student Group</label>
-                        <select id="sped-filter" class="filter-select w-full"><option value="all">All Students</option><option value="sped">Special Education</option><option value="gened">General Education</option><option value="tier2">Tier 2</option></select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input type="text" id="student-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg">
+                        <div>
+                            <label for="student-activity-filter" class="sr-only">Filter by Activity</label>
+                            <select id="student-activity-filter" class="filter-select w-full"></select>
+                        </div>
                     </div>
-                    <div>
-                        <label for="activity-filter" class="block text-sm font-medium text-gray-700 mb-1">Activity / Team</label>
-                        <select id="activity-filter" class="filter-select w-full"><option value="all">All Activities</option></select>
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                         <div id="student-grade-filters" class="flex flex-wrap items-center gap-2"><span class="font-medium text-gray-600">Grade:</span><button class="filter-btn active" data-grade="all">All</button><button class="filter-btn" data-grade="9">9</button><button class="filter-btn" data-grade="10">10</button><button class="filter-btn" data-grade="11">11</button><button class="filter-btn" data-grade="12">12</button></div>
+                        <div id="student-eligibility-filters" class="flex flex-wrap items-center gap-2"><span class="font-medium text-gray-600">Status:</span><button class="filter-btn active" data-status="all">All</button><button class="filter-btn" data-status="ineligible">Ineligible</button><button class="filter-btn" data-status="eligible">Eligible</button></div>
                     </div>
+                    <div class="overflow-x-auto"><table class="fixed-table"><thead class="bg-gray-50 sticky top-0 z-10"><tr><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="grade">Grade <span class="sort-icon"></span></th><th class="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="studentName">Student Name <span class="sort-icon"></span></th><th class="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activities</th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="numFGrades">Failing <span class="sort-icon"></span></th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="unservedDetention">Detention <span class="sort-icon"></span></th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="totalAbsences">Absences <span class="sort-icon"></span></th><th class="w-2/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Spartan Hour</th></tr></thead><tbody id="student-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                    <div id="no-students-message" class="text-center py-8 text-gray-500 hidden">No students match the current filters.</div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <div id="kpi-total-students-card" class="card kpi-card"><div id="total-students" class="kpi-value">0</div><div class="kpi-label">Total Students</div></div>
-                <div id="kpi-ineligible-students-card" class="card kpi-card"><div id="ineligible-students" class="kpi-value">0</div><div class="kpi-label">Ineligible Students</div></div>
-                <div id="kpi-ineligibility-rate-card" class="card kpi-card"><div id="ineligibility-rate" class="kpi-value">0%</div><div class="kpi-label">Ineligibility Rate</div></div>
-                <div id="kpi-avg-absences-card" class="card kpi-card"><div id="avg-absences" class="kpi-value">0</div><div class="kpi-label">Avg. Absences (Periods)</div></div>
-                <div id="kpi-total-f-grades-card" class="card kpi-card"><div id="total-f-grades" class="kpi-value">0</div><div class="kpi-label">Total F Grades</div></div>
-                <div id="kpi-spartan-total-requests-card" class="card kpi-card"><div id="spartan-total-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Total Requests</div></div>
-                <div id="kpi-spartan-skipped-requests-card" class="card kpi-card"><div id="spartan-skipped-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Skipped Requests</div></div>
-                <div id="kpi-spartan-high-priority-requests-card" class="card kpi-card"><div id="spartan-high-priority-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour High Priority Requests</div></div>
-                <div id="kpi-total-students-with-club-meetings-card" class="card kpi-card"><div id="total-students-with-club-meetings" class="kpi-value">0</div><div class="kpi-label">Club Participation</div></div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Absence Breakdown by Type</h2><div class="chart-container"><canvas id="attendance-breakdown-chart"></canvas></div></div>
-                <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ineligibility Reasons</h2><div class="chart-container"><canvas id="ineligibility-chart"></canvas></div></div>
-                <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Average Absences by Number of Failing Grades</h2><div class="chart-container"><canvas id="correlation-chart"></canvas></div></div>
-                <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Performance: Activity vs. Non-Activity Students</h2><div class="chart-container"><canvas id="activity-chart"></canvas></div></div>
-                <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Spartan Hour Request Breakdown</h2><div class="chart-container"><canvas id="spartan-hour-chart"></canvas></div></div>
-                <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Club Participation by Grade</h2><div class="chart-container"><canvas id="club-meetings-by-grade-chart"></canvas></div></div>
-            </div>
-
-            <div class="card">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-700">Student Lookup</h2>
-                    <button id="reset-student-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <input type="text" id="student-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg">
-                    <div>
-                        <label for="student-activity-filter" class="sr-only">Filter by Activity</label>
-                        <select id="student-activity-filter" class="filter-select w-full"></select>
+            <div id="tab-content-visuals" class="hidden">
+                 <div class="card mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Global Dashboard Filters</h2>
+                        <button id="reset-global-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                    </div>
+                    <div id="global-filters" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="grade-filter" class="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
+                            <select id="grade-filter" class="filter-select w-full"><option value="all">All Grades</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select>
+                        </div>
+                        <div>
+                            <label for="sped-filter" class="block text-sm font-medium text-gray-700 mb-1">Student Group</label>
+                            <select id="sped-filter" class="filter-select w-full"><option value="all">All Students</option><option value="sped">Special Education</option><option value="gened">General Education</option><option value="tier2">Tier 2</option></select>
+                        </div>
+                        <div>
+                            <label for="activity-filter" class="block text-sm font-medium text-gray-700 mb-1">Activity / Team</label>
+                            <select id="activity-filter" class="filter-select w-full"><option value="all">All Activities</option></select>
+                        </div>
                     </div>
                 </div>
-                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-                     <div id="student-grade-filters" class="flex flex-wrap items-center gap-2"><span class="font-medium text-gray-600">Grade:</span><button class="filter-btn active" data-grade="all">All</button><button class="filter-btn" data-grade="9">9</button><button class="filter-btn" data-grade="10">10</button><button class="filter-btn" data-grade="11">11</button><button class="filter-btn" data-grade="12">12</button></div>
-                    <div id="student-eligibility-filters" class="flex flex-wrap items-center gap-2"><span class="font-medium text-gray-600">Status:</span><button class="filter-btn active" data-status="all">All</button><button class="filter-btn" data-status="ineligible">Ineligible</button><button class="filter-btn" data-status="eligible">Eligible</button></div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                    <div id="kpi-total-students-card" class="card kpi-card"><div id="total-students" class="kpi-value">0</div><div class="kpi-label">Total Students</div></div>
+                    <div id="kpi-ineligible-students-card" class="card kpi-card"><div id="ineligible-students" class="kpi-value">0</div><div class="kpi-label">Ineligible Students</div></div>
+                    <div id="kpi-ineligibility-rate-card" class="card kpi-card"><div id="ineligibility-rate" class="kpi-value">0%</div><div class="kpi-label">Ineligibility Rate</div></div>
+                    <div id="kpi-avg-absences-card" class="card kpi-card"><div id="avg-absences" class="kpi-value">0</div><div class="kpi-label">Avg. Absences (Periods)</div></div>
+                    <div id="kpi-total-f-grades-card" class="card kpi-card"><div id="total-f-grades" class="kpi-value">0</div><div class="kpi-label">Total F Grades</div></div>
+                    <div id="kpi-spartan-total-requests-card" class="card kpi-card"><div id="spartan-total-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Total Requests</div></div>
+                    <div id="kpi-spartan-skipped-requests-card" class="card kpi-card"><div id="spartan-skipped-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Skipped Requests</div></div>
+                    <div id="kpi-spartan-high-priority-requests-card" class="card kpi-card"><div id="spartan-high-priority-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour High Priority Requests</div></div>
+                    <div id="kpi-total-students-with-club-meetings-card" class="card kpi-card"><div id="total-students-with-club-meetings" class="kpi-value">0</div><div class="kpi-label">Club Participation</div></div>
                 </div>
-                <div class="overflow-x-auto"><table class="fixed-table"><thead class="bg-gray-50 sticky top-0 z-10"><tr><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="grade">Grade <span class="sort-icon"></span></th><th class="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="studentName">Student Name <span class="sort-icon"></span></th><th class="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activities</th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="numFGrades">Failing <span class="sort-icon"></span></th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="unservedDetention">Detention <span class="sort-icon"></span></th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" data-sort="totalAbsences">Absences <span class="sort-icon"></span></th><th class="w-2/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Spartan Hour</th></tr></thead><tbody id="student-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
-                <div id="no-students-message" class="text-center py-8 text-gray-500 hidden">No students match the current filters.</div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Absence Breakdown by Type</h2><div class="chart-container"><canvas id="attendance-breakdown-chart"></canvas></div></div>
+                    <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ineligibility Reasons</h2><div class="chart-container"><canvas id="ineligibility-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Average Absences by Number of Failing Grades</h2><div class="chart-container"><canvas id="correlation-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Performance: Activity vs. Non-Activity Students</h2><div class="chart-container"><canvas id="activity-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Spartan Hour Request Breakdown</h2><div class="chart-container"><canvas id="spartan-hour-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Club Participation by Grade</h2><div class="chart-container"><canvas id="club-meetings-by-grade-chart"></canvas></div></div>
+                </div>
             </div>
         </main>
     </div>
@@ -148,10 +159,36 @@
             setupSorting();
             setupTooltips();
             setupClearButtons();
+            setupTabs();
             
             updateDashboard();
             applyStudentListFilters();
             updateSortIcons();
+        }
+
+        function setupTabs() {
+            const tabStudents = document.getElementById('tab-students');
+            const tabVisuals = document.getElementById('tab-visuals');
+            const contentStudents = document.getElementById('tab-content-students');
+            const contentVisuals = document.getElementById('tab-content-visuals');
+
+            tabStudents.addEventListener('click', () => {
+                tabStudents.classList.add('text-white', 'border-white');
+                tabStudents.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
+                tabVisuals.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
+                tabVisuals.classList.remove('text-white', 'border-white');
+                contentStudents.classList.remove('hidden');
+                contentVisuals.classList.add('hidden');
+            });
+
+            tabVisuals.addEventListener('click', () => {
+                tabVisuals.classList.add('text-white', 'border-white');
+                tabVisuals.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
+                tabStudents.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
+                tabStudents.classList.remove('text-white', 'border-white');
+                contentVisuals.classList.remove('hidden');
+                contentStudents.classList.add('hidden');
+            });
         }
 
         function handleError(error) { console.error("Dashboard Error:", error); document.getElementById('loading-state').innerHTML = `<p class="text-red-500 font-semibold">Error loading data.</p><p class="text-gray-600 mt-2">Please ensure the sheet '⭐Academics & Attendance Hub' exists and you have permission.</p>`; }

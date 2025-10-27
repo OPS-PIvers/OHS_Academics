@@ -357,8 +357,8 @@ function sendCounselorSummaryEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Total Absences [S]
-      const studentRange = hubSheet.getRange("B2:S" + hubLastRow).getValues();
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Total Absences [S], Consecutive Weeks [AD]
+      const studentRange = hubSheet.getRange("B2:AD" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
         const failingClasses = row[10]; // Index 10 -> Col L
@@ -370,7 +370,8 @@ function sendCounselorSummaryEmails() {
             grade: row[1],             // Index 1 -> Col C
             detention: row[5] || '0',  // Index 5 -> Col G
             failing: failingClasses,   // This will have a value
-            absences: row[17] || '0'   // Index 17 -> Col S
+            absences: row[17] || '0',   // Index 17 -> Col S
+            consecutiveWeeks: row[28] || '0' // Index 28 -> Col AD
           });
         }
       });
@@ -491,6 +492,7 @@ function sendCounselorSummaryEmails() {
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif;">${formattedClassList}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif; text-align: center; white-space: nowrap;">${student.detention}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif; text-align: center; white-space: nowrap;">${student.absences}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif; text-align: center; white-space: nowrap;">${student.consecutiveWeeks}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif;">${spartanData.requests}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif;">${spartanData.skipped}</td>
         </tr>
@@ -521,6 +523,7 @@ function sendCounselorSummaryEmails() {
                       <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Failing Class(es)</th>
                       <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Unserved Detention</th>
                       <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Total Absences</th>
+                      <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Consecutive Weeks on D/F List</th>
                       <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Spartan Hour Request (Past 7 days)</th>
                       <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Skipped Session(s) (Past 7 days)</th>
                     </tr>
