@@ -329,6 +329,12 @@
             if(Math.abs(baselineKPIs[kpiKey] - currentKpi) > 0.01 || (baselineKPIs[kpiKey] === 0 && currentKpi !== 0)) {
               tooltipHtml += `<li><span>School-Wide:</span> <strong>${formatter(baselineKPIs[kpiKey])}</strong></li>`;
             }
+
+            if (baselineKPIs[kpiKey] > 0 && kpiKey !== 'ineligibilityRate' && kpiKey !== 'avgAbsences') {
+                const percentageOfTotal = (currentKpi / baselineKPIs[kpiKey]) * 100;
+                tooltipHtml += `<li><span>% of Total:</span> <strong>${percentageOfTotal.toFixed(1)}%</strong></li>`;
+            }
+            
             tooltipHtml += `</ul>`;
             return tooltipHtml;
         }
