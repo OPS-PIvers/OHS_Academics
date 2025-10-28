@@ -495,7 +495,11 @@
                     let content = '';
                     if (type === 'failing' && student.numFGrades > 0) {
                         const classes = student.failingClasses.split('\n').filter(Boolean).map(c => `<li>${c}</li>`).join('');
-                        content = `<h4>Failing Classes</h4><ul style="list-style: inside;">${classes}</ul>`;
+                        let weeksHTML = '';
+                        if (student.consecutiveWeeks > 0) {
+                            weeksHTML = `<div style="margin-top: 10px;"><h4>Consecutive Weeks on D/F List</h4><p>${student.consecutiveWeeks}</p></div>`;
+                        }
+                        content = `<h4>Failing Classes</h4><ul style="list-style: inside;">${classes}</ul>${weeksHTML}`;
                     } else if (type === 'detention' && student.unservedDetention > 0) {
                         content = `<h4>Detention Details</h4><ul><li><span>Discipline:</span> <strong>${student.disciplineDetention} hrs</strong></li><li><span>Attendance:</span> <strong>${student.attendanceDetention} hrs</strong></li></ul>`;
                     } else if (type === 'absences') {
@@ -506,7 +510,7 @@
                             content += `<div style="margin-top: 10px;"><h4>Attendance Letters</h4><p>${student.attendanceLetters}</p></div>`;
                         }
                     } else if (type === 'spartanHour') {
-                        content = `<h4>Spartan Hour Details</h4><ul><li><span>Total Requests:</span> <strong>${student.spartanHourTotalRequests}</strong></li><li><span>Skipped Requests:</span> <strong>${student.spartanHourSkippedRequests}</strong></li><li><span>High Priority:</span> <strong>${student.spartanHourReqsHighPriority}</strong></li></ul>`;
+                        content = `<h4>Spartan Hour Details</h4><ul><li><span>Total Requests:</span> <strong>${student.spartanHourTotalRequests}</strong></li><li><span>Most Recent:</span> <strong>${student.mostRecentSpartanHourRequest || 'N/A'}</strong></li><li><span>Skipped Requests:</span> <strong>${student.spartanHourSkippedRequests}</strong></li><li><span>High Priority:</span> <strong>${student.spartanHourReqsHighPriority}</strong></li></ul>`;
                         if (student.totalClubMeetingsAttended > 0 || (student.clubsAttended && student.clubsAttended.trim() !== '')) {
                             content += `<div style="margin-top: 10px;"><h4>Club Details</h4><ul><li><span>Meetings Attended:</span> <strong>${student.totalClubMeetingsAttended}</strong></li><li><span>Clubs:</span> <strong>${student.clubsAttended || 'N/A'}</strong></li></ul></div>`;
                         }

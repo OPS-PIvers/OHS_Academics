@@ -510,55 +510,77 @@ function doGet() {
  * @returns {Object[]} An array of student data objects.
  */
 function getStudentData() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName("⭐Academics & Attendance Hub");
-    if (!sheet) {
-      throw new Error("Sheet '⭐Academics & Attendance Hub' not found.");
-    }
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return []; // No data if there are no students
-    }
-    
-    // Fetch data from column A (1) to AC (29) to include all necessary fields
-    const range = sheet.getRange(2, 1, lastRow - 1, 29);
-    const values = range.getValues();
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("⭐Academics & Attendance Hub");
+    if (!sheet) {
+      throw new Error("Sheet '⭐Academics & Attendance Hub' not found.");
+    }
 
-    const headers = [
-      "ineligible", "studentName", "grade", "id", "caseManager", "activity",
-      "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
-      "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
-      "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
-      "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
-      "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
-      "totalClubMeetingsAttended", "clubsAttended"
-    ];
+    // Get Spartan Hour Data
+    const spartanHourSheet = ss.getSheetByName("Spartan Hour Intervention");
+    const spartanHourData = new Map();
+    if (spartanHourSheet) {
+      const lastRow = spartanHourSheet.getLastRow();
+      if (lastRow >= 2) {
+        // Columns: C (Student Name), H (Requests)
+        const range = spartanHourSheet.getRange("C2:H" + lastRow).getValues();
+        range.forEach(row => {
+          const studentName = row[0]; // Col C
+          const requests = row[5]; // Col H
+          if (studentName && requests) {
+            const mostRecentRequest = requests.toString().split(/\n|,/)[0].trim();
+            spartanHourData.set(studentName.trim().toLowerCase(), mostRecentRequest);
+          }
+        });
+      }
+    }
 
-    const data = values.map(row => {
-      let obj = {};
-      headers.forEach((key, i) => {
-        let value = row[i];
-        // Perform necessary type conversions for charts and display
-        if (['ineligible', 'isFailing'].includes(key)) {
-          obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
-        } else if (['grade', 'id', 'unservedDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended'].includes(key)) {
-          // Ensure that numbers are parsed correctly, defaulting to 0 if blank or non-numeric
-          const parsedValue = parseInt(value, 10);
-          obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
-        } else {
-          obj[key] = value;
-        }
-      });
-      return obj;
-    }).filter(student => student.studentName); // Filter out any rows that might be empty
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      return []; // No data if there are no students
+    }
+    
+    // Fetch data from column A (1) to AD (30) to include all necessary fields
+    const range = sheet.getRange(2, 1, lastRow - 1, 30);
+    const values = range.getValues();
 
-    return data;
-  } catch (e) {
-    Logger.log("Error in getStudentData: " + e.message);
-    // Re-throw the error so the client-side failure handler can catch it
-    throw new Error("A server-side error occurred while fetching data: " + e.message);
-  }
+    const headers = [
+      "ineligible", "studentName", "grade", "id", "caseManager", "activity",
+      "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
+      "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
+      "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
+      "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
+      "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
+      "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
+    ];
+
+    const data = values.map(row => {
+      let obj = {};
+      headers.forEach((key, i) => {
+        let value = row[i];
+        // Perform necessary type conversions for charts and display
+        if (['ineligible', 'isFailing'].includes(key)) {
+          obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
+        } else if (['grade', 'id', 'unservedDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
+          // Ensure that numbers are parsed correctly, defaulting to 0 if blank or non-numeric
+          const parsedValue = parseInt(value, 10);
+          obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
+        } else {
+          obj[key] = value;
+        }
+      });
+      // Add most recent spartan hour request
+      obj.mostRecentSpartanHourRequest = spartanHourData.get(obj.studentName.trim().toLowerCase()) || '';
+      return obj;
+    }).filter(student => student.studentName); // Filter out any rows that might be empty
+
+    return data;
+  } catch (e) {
+    Logger.log("Error in getStudentData: " + e.message);
+    // Re-throw the error so the client-side failure handler can catch it
+    throw new Error("A server-side error occurred while fetching data: " + e.message);
+  }
 }
 
 
