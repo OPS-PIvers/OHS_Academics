@@ -65,8 +65,8 @@ function sendTier2InstructorEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [AB]
-      const studentRange = hubSheet.getRange("B2:AC" + hubLastRow).getValues();
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [AB], Consecutive Weeks [AD]
+      const studentRange = hubSheet.getRange("B2:AD" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
         const tier2Instructor = row[22]; // Index 22 -> Col X
@@ -78,7 +78,8 @@ function sendTier2InstructorEmails() {
             grade: row[1],             // Index 1 -> Col C
             detention: row[5] || '0',  // Index 5 -> Col G
             failing: row[10] || '',   // Index 10 -> Col L
-            instructor: tier2Instructor.trim()
+            instructor: tier2Instructor.trim(),
+            consecutiveWeeks: row[28] || '0' // Index 28 -> Col AD
           });
         }
       });
@@ -205,65 +206,7 @@ function sendTier2InstructorEmails() {
     const studentCardsHtml = instructor.students.map(student => {
       const spartanData = spartanHourData.get(student.name.trim().toLowerCase()) || { requests: 0, skipped: 0, signups: 0 };
       const studentAbsenceData = absenceData.get(student.name.trim().toLowerCase()) || { p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, sphr: 0 };
-      const isFailing = student.failing && student.failing.length > 0;
-
-      const getAbsenceColor = (absences) => {
-        if (absences >= 5) return '#f8d7da'; // Red for high absences
-        if (absences >= 3) return '#fff3cd'; // Yellow for medium absences
-        return '#ffffff'; // White for low absences
-      };
-
-      return `
-        <div style="border: 1px solid ${isFailing ? '#d9534f' : '#ddd'}; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9; font-family: 'Roboto', sans-serif;">
-          <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 20px; color: #333; font-weight: 500;">${student.name}</h3>
-          <table style="width: 100%;">
-            <tr>
-              <td style="width: 50%; vertical-align: top; padding-right: 10px;">
-                <p style="margin: 0 0 8px;"><strong>Grade:</strong> ${student.grade}</p>
-                <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
-                <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
-              </td>
-              <td style="width: 50%; vertical-align: top; padding-left: 10px;">
-                <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 16px; color: #555;">Spartan Hour Summary (Last 7 Days)</h4>
-                <ul style="margin: 0; padding-left: 20px; list-style-type: none;">
-                  <li><strong>Requests:</strong> ${spartanData.requests || '0'}</li>
-                  <li><strong>Sign-ups:</strong> ${spartanData.signups || '0'}</li>
-                  <li><strong>Skipped Sessions:</strong> ${spartanData.skipped || '0'}</li>
-                </ul>
-              </td>
-            </tr>
-          </table>
-          <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 16px; color: #555;">Absences by Period</h4>
-          <table style="width: 100%; border-collapse: collapse; text-align: center;">
-            <thead>
-              <tr style="background-color: #eee;">
-                <th style="padding: 4px; border: 1px solid #ddd;">P0</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">P1</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">P2</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">P3</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">P4</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">P5</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">P6</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">P7</th>
-                <th style="padding: 4px; border: 1px solid #ddd;">SpHr</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p0)};">${studentAbsenceData.p0}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p1)};">${studentAbsenceData.p1}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p2)};">${studentAbsenceData.p2}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p3)};">${studentAbsenceData.p3}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p4)};">${studentAbsenceData.p4}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p5)};">${studentAbsenceData.p5}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p6)};">${studentAbsenceData.p6}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p7)};">${studentAbsenceData.p7}</td>
-                <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.sphr)};">${studentAbsenceData.sphr}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `;
+      return createStudentCardHtml(student, spartanData, studentAbsenceData);
     }).join('');
 
     const timestampForSubject = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy");
@@ -1010,164 +953,291 @@ function sendIneligibilitySummary() {
  * Scans the Academics & Attendance Hub for failing students and sends a
  * summary email to their respective case managers, using a new matching logic.
  */
-function sendCaseManagerFailureReport() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
-  const adminSheet = ss.getSheetByName("Admin Settings");
+function sendCaseManagerSummaryEmails() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
+  const adminSheet = ss.getSheetByName("Admin Settings");
 
-  if (!hubSheet || !adminSheet) {
-    Logger.log("Error: Could not find one of the required sheets ('⭐Academics & Attendance Hub' or 'Admin Settings').");
-    return;
-  }
+  if (!hubSheet || !adminSheet) {
+    Logger.log("Error: Could not find one of the required sheets ('⭐Academics & Attendance Hub' or 'Admin Settings').");
+    return;
+  }
 
-  // 1. Create a lookup map using a standardized "match key" (e.g., "erickson, i")
-  const caseManagerMap = new Map();
-  // Read from columns C (First), D (Last), and E (Email)
-  const adminData = adminSheet.getRange("C2:E" + adminSheet.getLastRow()).getValues();
+  // 1. Create a lookup map for case managers
+  const caseManagerMap = new Map();
+  const adminData = adminSheet.getRange("C2:E" + adminSheet.getLastRow()).getValues();
+  adminData.forEach(row => {
+    const firstName = row[0];
+    const lastName = row[1];
+    const email = row[2];
+    if (lastName && email) {
+      const matchKey = lastName.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (!caseManagerMap.has(matchKey)) {
+        caseManagerMap.set(matchKey, { name: `${firstName.trim()} ${lastName.trim()}`, firstName: firstName.trim(), email: email.trim(), students: [] });
+      }
+    }
+  });
 
-  adminData.forEach(row => {
-    const firstName = row[0];
-    const lastName = row[1];
-    const email = row[2];
+  Logger.log(`Found ${caseManagerMap.size} case managers.`);
 
-    if (firstName && lastName && email) {
-      const managerInfo = {
-        firstName: firstName.trim(),
-        email: email.trim()
-      };
+  if (caseManagerMap.size === 0) {
+    Logger.log("No case manager data found in 'Admin Settings' sheet C:E.");
+    return;
+  }
 
-      // Create the primary match key: lastname,firstinitial (e.g., "troy,p")
-      const matchKeyWithInitial = `${lastName.trim().toLowerCase()},${firstName.trim().toLowerCase().charAt(0)}`;
-      caseManagerMap.set(matchKeyWithInitial, managerInfo);
+  // 2. Get all student data from the Hub
+  const studentData = [];
+  try {
+    const hubLastRow = hubSheet.getLastRow();
+    if (hubLastRow >= 2) {
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Case Manager [E], Consecutive Weeks [AD]
+      const studentRange = hubSheet.getRange("B2:AD" + hubLastRow).getValues();
+      studentRange.forEach(row => {
+        const studentName = row[0]; // Index 0 of range -> Col B
+        const caseManagerFromHub = row[3]; // Index 3 -> Col E
 
-      // Create a second key with only the last name (e.g., "troy")
-      const matchKeyLastNameOnly = lastName.trim().toLowerCase();
-      caseManagerMap.set(matchKeyLastNameOnly, managerInfo);
-    }
-  });
+        // Only include students who have an assigned case manager
+        if (studentName && caseManagerFromHub) {
+          studentData.push({
+            name: studentName,
+            grade: row[1],             // Index 1 -> Col C
+            detention: row[5] || '0',  // Index 5 -> Col G
+            failing: row[10] || '',   // Index 10 -> Col L
+            caseManager: caseManagerFromHub.toString().trim(),
+            consecutiveWeeks: row[28] || '0' // Index 28 -> Col AD
+          });
+        }
+      });
+    }
+  } catch (e) {
+    Logger.log(`Error reading student data: ${e.toString()}`);
+    return;
+  }
 
-  if (caseManagerMap.size === 0) {
-    Logger.log("No case manager data found in 'Admin Settings' sheet C:E.");
-    return;
-  }
+  Logger.log(`Found ${studentData.length} students with assigned case managers.`);
 
-  // 2. Group failing students by their case manager's standardized match key
-  const studentsByCaseManagerKey = new Map();
-  // Read data from the Hub, now including column S for absences
-  const studentData = hubSheet.getRange("B2:S" + hubSheet.getLastRow()).getValues();
+  // 3. Get Spartan Hour Data
+  const spartanHourSheet = ss.getSheetByName("Spartan Hour Intervention");
+  const spartanHourData = new Map();
+  if (spartanHourSheet) {
+    const lastRow = spartanHourSheet.getLastRow();
+    if (lastRow >= 2) {
+      // Columns: C (Student Name), H (Requests), P (Skipped), Q (Signups)
+      const range = spartanHourSheet.getRange("C2:Q" + lastRow).getValues();
+      const today = new Date();
+      const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0); // Normalize to the beginning of the day for an accurate 7-day window
 
-  studentData.forEach(row => {
-    const studentName = row[0]; // Column B
-    const caseManagerFromHub = row[3]; // Column E (e.g., "Erickson, I" or "Troy")
-    const detentionHours = row[5] || ''; // Column G
-    const classList = row[10]; // Column L
-    const totalAbsences = row[17] || 0; // Column S (index 17 because range starts at B)
+      const processColumn = (columnData) => {
+        if (!columnData) return '';
+        const delimiters = /[\n,]/;
+        return columnData.toString().split(delimiters).map(entry => {
+          entry = entry.trim();
+          if (!entry) return null;
+          const match = entry.match(/\((\d{1,2}\/\d{1,2})\)/);
+          if (match && match[1]) {
+            const dateParts = match[1].split('/');
+            const month = parseInt(dateParts[0], 10) - 1; // JavaScript months are 0-indexed
+            const day = parseInt(dateParts[1], 10);
+            const date = new Date(today.getFullYear(), month, day);
 
-    if (caseManagerFromHub && studentName && classList) {
-      // Standardize the name from the Hub to the "lastname,f" or "lastname" format
-      const studentMatchKey = caseManagerFromHub.toString().trim().toLowerCase().replace(/\s/g, '');
+            if (date > today) {
+              date.setFullYear(date.getFullYear() - 1);
+            }
+            if (date >= sevenDaysAgo && date <= today) {
+              return entry;
+            }
+          }
+          return null;
+        }).filter(Boolean).join('<br>');
+      };
 
-      if (!studentsByCaseManagerKey.has(studentMatchKey)) {
-        studentsByCaseManagerKey.set(studentMatchKey, []);
-      }
-      studentsByCaseManagerKey.get(studentMatchKey).push({
-        name: studentName,
-        classes: classList,
-        detentions: detentionHours,
-        totalAbsences: totalAbsences
-      });
-    }
-  });
+      range.forEach(row => {
+        const studentName = row[0]; // Col C
+        if (!studentName) return;
 
-  // 3. Iterate over each group and send a tailored email
-  for (const [matchKey, students] of studentsByCaseManagerKey.entries()) {
-    const caseManagerInfo = caseManagerMap.get(matchKey);
+        const requests = row[5]; // Col H
+        const skipped = row[13]; // Col P
+        const signups = row[14]; // Col Q
 
-    if (!caseManagerInfo) {
-      Logger.log(`Could not find a matching case manager for key: "${matchKey}". Skipping.`);
-      continue;
-    }
+        const recentRequests = processColumn(requests);
+        const recentSkipped = processColumn(skipped);
+        const recentSignups = processColumn(signups);
 
-    const {
-      firstName,
-      email
-    } = caseManagerInfo;
+        if (recentRequests || recentSkipped || recentSignups) {
+          const key = studentName.trim().toLowerCase();
+          if (!spartanHourData.has(key)) {
+            spartanHourData.set(key, { requests: '', skipped: '', signups: '' });
+          }
+          const existingData = spartanHourData.get(key);
+          if (recentRequests) {
+            existingData.requests = existingData.requests ? `${existingData.requests}<br>${recentRequests}` : recentRequests;
+          }
+          if (recentSkipped) {
+            existingData.skipped = existingData.skipped ? `${existingData.skipped}<br>${recentSkipped}` : recentSkipped;
+          }
+          if (recentSignups) {
+            existingData.signups = existingData.signups ? `${existingData.signups}<br>${recentSignups}` : recentSignups;
+          }
+        }
+      });
+    }
+  }
 
-    const htmlTableRows = students.map(student => {
-      const formattedClassList = student.classes.toString().replace(/\n/g, '<br>');
-      return `
-        <tr>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 14px; font-family: Arial, sans-serif;" width="25%">${student.name}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 14px; font-family: Arial, sans-serif;" width="40%">${formattedClassList}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 14px; font-family: Arial, sans-serif; text-align: center;" width="15%">${student.detentions}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 14px; font-family: Arial, sans-serif; text-align: center;" width="20%">${student.totalAbsences}</td>
-        </tr>
-      `;
-    }).join('');
+  // 4. Get Absence Data
+  const absenceSheet = ss.getSheetByName("Absences (total)");
+  const absenceData = new Map();
+  if (absenceSheet) {
+    const lastRow = absenceSheet.getLastRow();
+    if (lastRow >= 2) {
+      // Columns: A (Student Name), C-K (Periods)
+      const range = absenceSheet.getRange("A2:K" + lastRow).getValues();
+      range.forEach(row => {
+        const studentName = row[0];
+        if (studentName) {
+          const key = studentName.trim().toLowerCase();
+          absenceData.set(key, {
+            p0: row[2] || 0,
+            p1: row[3] || 0,
+            p2: row[4] || 0,
+            p3: row[5] || 0,
+            p4: row[6] || 0,
+            p5: row[7] || 0,
+            p6: row[8] || 0,
+            p7: row[9] || 0,
+            sphr: row[10] || 0,
+          });
+        }
+      });
+    }
+  }
 
-    const timestampForSubject = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy");
-    const timestampForBody = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy 'at' h:mm a");
+  // 5. Assign students to their respective case managers
+  studentData.forEach(student => {
+    const caseManagerKey = student.caseManager.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const caseManagerInfo = caseManagerMap.get(caseManagerKey);
+    if (caseManagerInfo) {
+      caseManagerInfo.students.push(student);
+    } else {
+      Logger.log(`No exact match for case manager: "${student.caseManager}"`);
+    }
+  });
 
-    const subject = `Failing Student Report for your Caseload - ${timestampForSubject}`;
-    const htmlBody = `
-      <!DOCTYPE html>
-      <html>
-      <body style="margin: 0; padding: 0; background-color: #f0f0f0; font-family: Arial, sans-serif;">
-        <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <tr>
-            <td align="center" style="padding: 40px 0 30px 0; background-color: #d9534f; color: #ffffff;">
-              <h1 style="font-size: 24px; margin: 0;">Academic Alert</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 20px 30px 40px 30px;">
-              <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td style="color: #153643; font-size: 16px;">
-                    <p style="margin: 0;">Hello ${firstName},</p>
-                    <p style="margin: 15px 0 10px 0;">As of <strong>${timestampForBody}</strong>, the following students on your caseload are failing one or more classes:</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border-radius: 4px; overflow: hidden; border: 1px solid #ddd;">
-                      <thead>
-                        <tr style="background-color: #f2f2f2;">
-                  -        <th style="padding: 10px 12px; text-align: left; font-size: 14px;" width="25%">Student Name</th>
-                          <th style="padding: 10px 12px; text-align: left; font-size: 14px;" width="40%">Classes with Failing Grade</th>
-                          <th style="padding: 10px 12px; text-align: center; font-size: 14px;" width="15%">Unserved Detention Hours</th>
-                          <th style="padding: 10px 12px; text-align: center; font-size: 14px;" width="20%">Total Absences</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${htmlTableRows}
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 20px 30px; background-color: #ecf0f1; text-align: center; font-size: 12px; color: #7f8c8d;">
-              This is an automated notification from the Academics & Attendance Hub.
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
+  // 6. Iterate over each group and send a tailored email
+  for (const [key, caseManagerInfo] of caseManagerMap.entries()) {
+    if (caseManagerInfo.students.length === 0) {
+      continue;
+    }
 
-    try {
-      MailApp.sendEmail({
-        to: email,
-        subject: subject,
-        htmlBody: htmlBody
-      });
-      Logger.log(`Successfully sent report to ${firstName} at ${email}`);
-    } catch (e) {
-      Logger.log(`Failed to send email to ${firstName}. Error: ${e.toString()}`);
-    }
-  }
+    Logger.log(`Processing case manager: ${caseManagerInfo.name}`);
+    Logger.log(`Found ${caseManagerInfo.students.length} students for ${caseManagerInfo.name}.`);
+
+    caseManagerInfo.students.sort((a, b) => a.name.localeCompare(b.name));
+
+    const studentCardsHtml = caseManagerInfo.students.map(student => {
+      const spartanData = spartanHourData.get(student.name.trim().toLowerCase()) || { requests: 0, skipped: 0, signups: 0 };
+      const studentAbsenceData = absenceData.get(student.name.trim().toLowerCase()) || { p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, sphr: 0 };
+      return createStudentCardHtml(student, spartanData, studentAbsenceData);
+    }).join('');
+
+    const timestampForSubject = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy");
+    const caseManagerFirstName = caseManagerInfo.firstName;
+
+    const subject = `Weekly Caseload Summary - ${timestampForSubject}`;
+    const htmlBody = `
+      <!DOCTYPE html><html><head><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin: 0; padding: 20px; background-color: #f0f0f0; font-family: 'Roboto', sans-serif;">
+        <div style="max-width: 800px; margin: auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <h1 style="font-size: 24px; margin: 0 0 20px; color: #4356a0;">Weekly Student Summary</h1>
+          <p style="margin: 0 0 20px; font-size: 16px; color: #333;">Hi ${caseManagerFirstName},</p>
+          <p style="margin: 0 0 30px; font-size: 16px; color: #333;">Here is the weekly summary for the students on your caseload:</p>
+          ${studentCardsHtml}
+          <p style="margin-top: 30px; font-size: 12px; color: #7f8c8d; text-align: center;">This is an automated notification from the OHS Academics & Attendance Hub.</p>
+        </div>
+      </body></html>
+    `;
+
+    try {
+      Logger.log(`Sending email to ${caseManagerInfo.name} at ${caseManagerInfo.email}`);
+      MailApp.sendEmail({
+        to: caseManagerInfo.email,
+        subject: subject,
+        htmlBody: htmlBody
+      });
+      Logger.log(`Successfully sent summary email to ${caseManagerInfo.name} at ${caseManagerInfo.email}`);
+    } catch (e) {
+      Logger.log(`Failed to send email to ${caseManagerInfo.name}. Error: ${e.toString()}`);
+    }
+  }
 }
+
+/**
+ * Creates an HTML card for a student with their academic and attendance summary.
+ * @param {object} student - The student data object.
+ * @param {object} spartanData - The Spartan Hour data for the student.
+ * @param {object} studentAbsenceData - The absence data for the student.
+ * @returns {string} The HTML string for the student card.
+ */
+function createStudentCardHtml(student, spartanData, studentAbsenceData) {
+  const isFailing = student.failing && student.failing.length > 0;
+
+  const getAbsenceColor = (absences) => {
+    if (absences >= 5) return '#f8d7da'; // Red for high absences
+    if (absences >= 3) return '#fff3cd'; // Yellow for medium absences
+    return '#ffffff'; // White for low absences
+  };
+
+  return `
+    <div style="border: 1px solid ${isFailing ? '#d9534f' : '#ddd'}; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9; font-family: 'Roboto', sans-serif;">
+      <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 20px; color: #333; font-weight: 500;">${student.name}</h3>
+      <table style="width: 100%;">
+        <tr>
+          <td style="width: 50%; vertical-align: top; padding-right: 10px;">
+            <p style="margin: 0 0 8px;"><strong>Grade:</strong> ${student.grade}</p>
+            <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
+            <p style="margin: 0 0 8px;"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
+            <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
+          </td>
+          <td style="width: 50%; vertical-align: top; padding-left: 10px;">
+            <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 16px; color: #555;">Spartan Hour Summary (Last 7 Days)</h4>
+            <ul style="margin: 0; padding-left: 20px; list-style-type: none;">
+              <li><strong>Requests:</strong> ${spartanData.requests || '0'}</li>
+              <li><strong>Sign-ups:</strong> ${spartanData.signups || '0'}</li>
+              <li><strong>Skipped Sessions:</strong> ${spartanData.skipped || '0'}</li>
+            </ul>
+          </td>
+        </tr>
+      </table>
+      <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 16px; color: #555;">Absences by Period</h4>
+      <table style="width: 100%; border-collapse: collapse; text-align: center;">
+        <thead>
+          <tr style="background-color: #eee;">
+            <th style="padding: 4px; border: 1px solid #ddd;">P0</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">P1</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">P2</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">P3</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">P4</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">P5</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">P6</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">P7</th>
+            <th style="padding: 4px; border: 1px solid #ddd;">SpHr</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p0)};">${studentAbsenceData.p0}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p1)};">${studentAbsenceData.p1}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p2)};">${studentAbsenceData.p2}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p3)};">${studentAbsenceData.p3}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p4)};">${studentAbsenceData.p4}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p5)};">${studentAbsenceData.p5}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p6)};">${studentAbsenceData.p6}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.p7)};">${studentAbsenceData.p7}</td>
+            <td style="padding: 4px; border: 1px solid #ddd; background-color: ${getAbsenceColor(studentAbsenceData.sphr)};">${studentAbsenceData.sphr}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 
