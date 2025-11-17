@@ -69,6 +69,7 @@
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                     <button id="tab-students" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-white border-white">Student List</button>
                     <button id="tab-visuals" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Data Visualizations</button>
+                    <button id="tab-snapshots" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Weekly Snapshots</button>
                 </nav>
             </div>
 
@@ -137,6 +138,78 @@
                     <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Club Participation by Grade</h2><div class="chart-container"><canvas id="club-meetings-by-grade-chart"></canvas></div></div>
                 </div>
             </div>
+
+            <div id="tab-content-snapshots" class="hidden">
+                <div class="card mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Weekly Data Snapshots</h2>
+                    <p class="text-gray-600 mb-6">Compare student data across different weeks to track trends and changes over time. Snapshots are automatically created every Monday at 6:00 AM.</p>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h3 class="font-semibold text-blue-900 mb-2">Snapshot Management</h3>
+                        <div class="flex flex-wrap gap-3">
+                            <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Create Snapshot Now</button>
+                            <button id="setup-trigger-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">Setup Weekly Trigger</button>
+                            <button id="refresh-snapshots-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium">Refresh List</button>
+                        </div>
+                        <div id="snapshot-status" class="mt-3 text-sm text-gray-700"></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="snapshot1-select" class="block text-sm font-medium text-gray-700 mb-2">Compare from (older):</label>
+                            <select id="snapshot1-select" class="filter-select w-full">
+                                <option value="">Select a snapshot...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="snapshot2-select" class="block text-sm font-medium text-gray-700 mb-2">Compare to (newer):</label>
+                            <select id="snapshot2-select" class="filter-select w-full">
+                                <option value="">Select a snapshot...</option>
+                                <option value="current">Current Data (Live)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="text-center mb-6">
+                        <button id="compare-snapshots-btn" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold text-lg disabled:bg-gray-300 disabled:cursor-not-allowed" disabled>Compare Snapshots</button>
+                    </div>
+
+                    <div id="comparison-loading" class="hidden text-center py-8">
+                        <svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <p class="mt-4 text-gray-600 font-medium">Comparing snapshots...</p>
+                    </div>
+
+                    <div id="comparison-results" class="hidden">
+                        <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Comparison Summary</h3>
+                            <div id="comparison-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <h3 class="text-lg font-semibold text-green-800 mb-3 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                    Improvements
+                                </h3>
+                                <div id="improvements-list" class="max-h-96 overflow-y-auto"></div>
+                            </div>
+
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <h3 class="text-lg font-semibold text-red-800 mb-3 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                                    Declines
+                                </h3>
+                                <div id="declines-list" class="max-h-96 overflow-y-auto"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-3">All Changes</h3>
+                            <div id="all-changes-list" class="max-h-96 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -169,26 +242,34 @@
         function setupTabs() {
             const tabStudents = document.getElementById('tab-students');
             const tabVisuals = document.getElementById('tab-visuals');
+            const tabSnapshots = document.getElementById('tab-snapshots');
             const contentStudents = document.getElementById('tab-content-students');
             const contentVisuals = document.getElementById('tab-content-visuals');
+            const contentSnapshots = document.getElementById('tab-content-snapshots');
 
-            tabStudents.addEventListener('click', () => {
-                tabStudents.classList.add('text-white', 'border-white');
-                tabStudents.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabVisuals.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabVisuals.classList.remove('text-white', 'border-white');
-                contentStudents.classList.remove('hidden');
-                contentVisuals.classList.add('hidden');
+            function switchTab(activeTab, activeContent) {
+                [tabStudents, tabVisuals, tabSnapshots].forEach(tab => {
+                    if (tab === activeTab) {
+                        tab.classList.add('text-white', 'border-white');
+                        tab.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
+                    } else {
+                        tab.classList.remove('text-white', 'border-white');
+                        tab.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
+                    }
+                });
+                [contentStudents, contentVisuals, contentSnapshots].forEach(content => {
+                    content.classList.toggle('hidden', content !== activeContent);
+                });
+            }
+
+            tabStudents.addEventListener('click', () => switchTab(tabStudents, contentStudents));
+            tabVisuals.addEventListener('click', () => switchTab(tabVisuals, contentVisuals));
+            tabSnapshots.addEventListener('click', () => {
+                switchTab(tabSnapshots, contentSnapshots);
+                loadAvailableSnapshots();
             });
 
-            tabVisuals.addEventListener('click', () => {
-                tabVisuals.classList.add('text-white', 'border-white');
-                tabVisuals.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabStudents.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabStudents.classList.remove('text-white', 'border-white');
-                contentVisuals.classList.remove('hidden');
-                contentStudents.classList.add('hidden');
-            });
+            setupSnapshotHandlers();
         }
 
         function handleError(error) { console.error("Dashboard Error:", error); document.getElementById('loading-state').innerHTML = `<p class="text-red-500 font-semibold">Error loading data.</p><p class="text-gray-600 mt-2">Please ensure the sheet '⭐Academics & Attendance Hub' exists and you have permission.</p>`; }
@@ -585,6 +666,245 @@
                 studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' };
                 applyStudentListFilters();
             });
+        }
+
+        // ===============================================================
+        // SNAPSHOT MANAGEMENT FUNCTIONS
+        // ===============================================================
+
+        function setupSnapshotHandlers() {
+            const createBtn = document.getElementById('create-snapshot-btn');
+            const setupTriggerBtn = document.getElementById('setup-trigger-btn');
+            const refreshBtn = document.getElementById('refresh-snapshots-btn');
+            const compareBtn = document.getElementById('compare-snapshots-btn');
+            const snapshot1Select = document.getElementById('snapshot1-select');
+            const snapshot2Select = document.getElementById('snapshot2-select');
+
+            createBtn.addEventListener('click', createSnapshot);
+            setupTriggerBtn.addEventListener('click', setupWeeklyTrigger);
+            refreshBtn.addEventListener('click', loadAvailableSnapshots);
+            compareBtn.addEventListener('click', compareSelectedSnapshots);
+
+            // Enable compare button only when both selections are made
+            [snapshot1Select, snapshot2Select].forEach(select => {
+                select.addEventListener('change', () => {
+                    const canCompare = snapshot1Select.value && snapshot2Select.value;
+                    compareBtn.disabled = !canCompare;
+                });
+            });
+        }
+
+        function loadAvailableSnapshots() {
+            const statusDiv = document.getElementById('snapshot-status');
+            statusDiv.innerHTML = '<span class="text-gray-600">Loading snapshots...</span>';
+
+            google.script.run
+                .withSuccessHandler(populateSnapshotSelects)
+                .withFailureHandler(err => {
+                    statusDiv.innerHTML = `<span class="text-red-600">Error loading snapshots: ${err.message}</span>`;
+                })
+                .getAvailableSnapshots();
+        }
+
+        function populateSnapshotSelects(snapshots) {
+            const snapshot1Select = document.getElementById('snapshot1-select');
+            const snapshot2Select = document.getElementById('snapshot2-select');
+            const statusDiv = document.getElementById('snapshot-status');
+
+            // Clear existing options except the first one
+            snapshot1Select.innerHTML = '<option value="">Select a snapshot...</option>';
+            snapshot2Select.innerHTML = '<option value="">Select a snapshot...</option><option value="current">Current Data (Live)</option>';
+
+            if (snapshots.length === 0) {
+                statusDiv.innerHTML = '<span class="text-yellow-600">No snapshots available. Create your first snapshot to get started!</span>';
+                return;
+            }
+
+            snapshots.forEach(snapshot => {
+                const option1 = document.createElement('option');
+                option1.value = snapshot.name;
+                option1.textContent = snapshot.displayName;
+                snapshot1Select.appendChild(option1);
+
+                const option2 = document.createElement('option');
+                option2.value = snapshot.name;
+                option2.textContent = snapshot.displayName;
+                snapshot2Select.appendChild(option2);
+            });
+
+            statusDiv.innerHTML = `<span class="text-green-600">Found ${snapshots.length} snapshot(s). Select two to compare.</span>`;
+        }
+
+        function createSnapshot() {
+            const statusDiv = document.getElementById('snapshot-status');
+            const createBtn = document.getElementById('create-snapshot-btn');
+
+            createBtn.disabled = true;
+            statusDiv.innerHTML = '<span class="text-blue-600">Creating snapshot...</span>';
+
+            google.script.run
+                .withSuccessHandler(snapshotName => {
+                    statusDiv.innerHTML = `<span class="text-green-600">✓ Snapshot created successfully: ${snapshotName}</span>`;
+                    createBtn.disabled = false;
+                    loadAvailableSnapshots();
+                })
+                .withFailureHandler(err => {
+                    statusDiv.innerHTML = `<span class="text-red-600">Error creating snapshot: ${err.message}</span>`;
+                    createBtn.disabled = false;
+                })
+                .createWeeklySnapshot();
+        }
+
+        function setupWeeklyTrigger() {
+            const statusDiv = document.getElementById('snapshot-status');
+            const setupBtn = document.getElementById('setup-trigger-btn');
+
+            setupBtn.disabled = true;
+            statusDiv.innerHTML = '<span class="text-blue-600">Setting up weekly trigger...</span>';
+
+            google.script.run
+                .withSuccessHandler(() => {
+                    statusDiv.innerHTML = '<span class="text-green-600">✓ Weekly trigger set up successfully! Snapshots will be created every Monday at 6:00 AM.</span>';
+                    setupBtn.disabled = false;
+                })
+                .withFailureHandler(err => {
+                    statusDiv.innerHTML = `<span class="text-red-600">Error setting up trigger: ${err.message}</span>`;
+                    setupBtn.disabled = false;
+                })
+                .setupWeeklySnapshotTrigger();
+        }
+
+        function compareSelectedSnapshots() {
+            const snapshot1 = document.getElementById('snapshot1-select').value;
+            const snapshot2 = document.getElementById('snapshot2-select').value;
+
+            if (!snapshot1 || !snapshot2) {
+                alert('Please select two snapshots to compare.');
+                return;
+            }
+
+            const loadingDiv = document.getElementById('comparison-loading');
+            const resultsDiv = document.getElementById('comparison-results');
+            const compareBtn = document.getElementById('compare-snapshots-btn');
+
+            compareBtn.disabled = true;
+            loadingDiv.classList.remove('hidden');
+            resultsDiv.classList.add('hidden');
+
+            google.script.run
+                .withSuccessHandler(displayComparisonResults)
+                .withFailureHandler(err => {
+                    loadingDiv.classList.add('hidden');
+                    compareBtn.disabled = false;
+                    alert(`Error comparing snapshots: ${err.message}`);
+                })
+                .compareSnapshots(snapshot1, snapshot2);
+        }
+
+        function displayComparisonResults(comparison) {
+            const loadingDiv = document.getElementById('comparison-loading');
+            const resultsDiv = document.getElementById('comparison-results');
+            const compareBtn = document.getElementById('compare-snapshots-btn');
+
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            compareBtn.disabled = false;
+
+            // Populate summary
+            const summaryDiv = document.getElementById('comparison-summary');
+            summaryDiv.innerHTML = `
+                <div class="bg-white rounded-lg p-4 shadow">
+                    <div class="text-2xl font-bold text-gray-800">${comparison.summary.studentsImproved}</div>
+                    <div class="text-sm text-gray-600">Students Improved</div>
+                </div>
+                <div class="bg-white rounded-lg p-4 shadow">
+                    <div class="text-2xl font-bold text-gray-800">${comparison.summary.studentsDeclined}</div>
+                    <div class="text-sm text-gray-600">Students Declined</div>
+                </div>
+                <div class="bg-white rounded-lg p-4 shadow">
+                    <div class="text-2xl font-bold text-gray-800">${comparison.summary.studentsWithChanges}</div>
+                    <div class="text-sm text-gray-600">Total with Changes</div>
+                </div>
+                <div class="bg-white rounded-lg p-4 shadow">
+                    <div class="text-2xl font-bold text-gray-800">${comparison.summary.totalStudents2}</div>
+                    <div class="text-sm text-gray-600">Total Students</div>
+                </div>
+            `;
+
+            // Populate improvements
+            const improvementsList = document.getElementById('improvements-list');
+            if (comparison.improvements.length === 0) {
+                improvementsList.innerHTML = '<p class="text-gray-500 text-sm">No improvements detected.</p>';
+            } else {
+                improvementsList.innerHTML = comparison.improvements.map(student => {
+                    const changes = formatChanges(student.changes);
+                    return `
+                        <div class="bg-white rounded p-3 mb-2 border border-green-200">
+                            <div class="font-semibold text-sm">${student.studentName}</div>
+                            <div class="text-xs text-gray-600">Grade ${student.grade}</div>
+                            <div class="text-xs mt-1">${changes}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Populate declines
+            const declinesList = document.getElementById('declines-list');
+            if (comparison.declines.length === 0) {
+                declinesList.innerHTML = '<p class="text-gray-500 text-sm">No declines detected.</p>';
+            } else {
+                declinesList.innerHTML = comparison.declines.map(student => {
+                    const changes = formatChanges(student.changes);
+                    return `
+                        <div class="bg-white rounded p-3 mb-2 border border-red-200">
+                            <div class="font-semibold text-sm">${student.studentName}</div>
+                            <div class="text-xs text-gray-600">Grade ${student.grade}</div>
+                            <div class="text-xs mt-1">${changes}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Populate all changes
+            const allChangesList = document.getElementById('all-changes-list');
+            if (comparison.changes.length === 0) {
+                allChangesList.innerHTML = '<p class="text-gray-500 text-sm">No changes detected between the selected snapshots.</p>';
+            } else {
+                allChangesList.innerHTML = comparison.changes.map(student => {
+                    const changes = formatChanges(student.changes);
+                    return `
+                        <div class="bg-white rounded p-3 mb-2 border border-gray-300">
+                            <div class="font-semibold text-sm">${student.studentName}</div>
+                            <div class="text-xs text-gray-600">Grade ${student.grade}</div>
+                            <div class="text-xs mt-1">${changes}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function formatChanges(changes) {
+            const parts = [];
+
+            if (changes.numFGrades) {
+                const color = changes.numFGrades.change < 0 ? 'text-green-600' : 'text-red-600';
+                const arrow = changes.numFGrades.change < 0 ? '↓' : '↑';
+                parts.push(`<span class="${color}">Failing: ${changes.numFGrades.old} ${arrow} ${changes.numFGrades.new}</span>`);
+            }
+
+            if (changes.totalAbsences) {
+                const color = changes.totalAbsences.change > 0 ? 'text-red-600' : 'text-green-600';
+                const arrow = changes.totalAbsences.change > 0 ? '↑' : '↓';
+                parts.push(`<span class="${color}">Absences: ${changes.totalAbsences.old} ${arrow} ${changes.totalAbsences.new}</span>`);
+            }
+
+            if (changes.unservedDetention) {
+                const color = changes.unservedDetention.change < 0 ? 'text-green-600' : 'text-red-600';
+                const arrow = changes.unservedDetention.change < 0 ? '↓' : '↑';
+                parts.push(`<span class="${color}">Detention: ${changes.unservedDetention.old} ${arrow} ${changes.unservedDetention.new}</span>`);
+            }
+
+            return parts.join(' • ');
         }
 
     </script>

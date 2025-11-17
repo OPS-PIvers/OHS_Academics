@@ -7,6 +7,338 @@
  */
 
 // ===============================================================
+// WEEKLY DATA SNAPSHOT SYSTEM
+// ===============================================================
+
+/**
+ * Creates a weekly snapshot of the "⭐Academics & Attendance Hub" sheet.
+ * This function should be run every Monday morning via a time-based trigger.
+ * @returns {string} The name of the created snapshot sheet.
+ */
+function createWeeklySnapshot() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
+
+  if (!hubSheet) {
+    Logger.log("Error: Could not find '⭐Academics & Attendance Hub' sheet.");
+    throw new Error("Hub sheet not found");
+  }
+
+  // Create snapshot name with date (format: Snapshot_2025-11-17)
+  const today = new Date();
+  const dateString = Utilities.formatDate(today, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const snapshotName = `Snapshot_${dateString}`;
+
+  // Check if a snapshot for today already exists
+  let existingSnapshot = ss.getSheetByName(snapshotName);
+  if (existingSnapshot) {
+    Logger.log(`Snapshot ${snapshotName} already exists. Deleting and recreating...`);
+    ss.deleteSheet(existingSnapshot);
+  }
+
+  // Copy the hub sheet
+  const snapshotSheet = hubSheet.copyTo(ss);
+  snapshotSheet.setName(snapshotName);
+
+  // Move snapshot sheet to the end
+  ss.moveActiveSheet(ss.getNumSheets());
+
+  // Add a timestamp cell at the top
+  snapshotSheet.insertRowBefore(1);
+  snapshotSheet.getRange("A1").setValue(`Snapshot created: ${Utilities.formatDate(today, Session.getScriptTimeZone(), "MMMM d, yyyy 'at' h:mm a")}`);
+  snapshotSheet.getRange("A1").setFontWeight("bold");
+  snapshotSheet.getRange("A1").setBackground("#d9ead3");
+
+  Logger.log(`Successfully created snapshot: ${snapshotName}`);
+  return snapshotName;
+}
+
+/**
+ * Returns a list of all available snapshot sheets.
+ * @returns {Object[]} Array of snapshot objects with name and date.
+ */
+function getAvailableSnapshots() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  const snapshots = [];
+
+  sheets.forEach(sheet => {
+    const name = sheet.getName();
+    if (name.startsWith("Snapshot_")) {
+      // Extract date from name (format: Snapshot_2025-11-17)
+      const dateMatch = name.match(/Snapshot_(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) {
+        snapshots.push({
+          name: name,
+          date: dateMatch[1],
+          displayName: Utilities.formatDate(new Date(dateMatch[1]), Session.getScriptTimeZone(), "MMMM d, yyyy")
+        });
+      }
+    }
+  });
+
+  // Sort by date descending (most recent first)
+  snapshots.sort((a, b) => b.date.localeCompare(a.date));
+
+  return snapshots;
+}
+
+/**
+ * Gets data from a specific snapshot sheet.
+ * @param {string} snapshotName - The name of the snapshot sheet.
+ * @returns {Object[]} Array of student data objects from the snapshot.
+ */
+function getSnapshotData(snapshotName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(snapshotName);
+
+  if (!sheet) {
+    throw new Error(`Snapshot ${snapshotName} not found.`);
+  }
+
+  // Account for the timestamp row we added
+  const dataStartRow = sheet.getRange("A2").getValue() ? 3 : 2;
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < dataStartRow) {
+    return [];
+  }
+
+  // Read data (columns A to AD)
+  const range = sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, 30);
+  const values = range.getValues();
+
+  const headers = [
+    "ineligible", "studentName", "grade", "id", "caseManager", "activity",
+    "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
+    "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
+    "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
+    "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
+    "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
+    "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
+  ];
+
+  const data = values.map(row => {
+    let obj = {};
+    headers.forEach((key, i) => {
+      let value = row[i];
+      if (['ineligible', 'isFailing'].includes(key)) {
+        obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
+      } else if (['grade', 'id', 'unservedDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
+        const parsedValue = parseInt(value, 10);
+        obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
+      } else {
+        obj[key] = value;
+      }
+    });
+    return obj;
+  }).filter(student => student.studentName);
+
+  return data;
+}
+
+/**
+ * Compares data between two snapshots or between a snapshot and current data.
+ * @param {string} snapshot1Name - Name of first snapshot (or "current" for current data).
+ * @param {string} snapshot2Name - Name of second snapshot (or "current" for current data).
+ * @returns {Object} Comparison results with changes, improvements, and declines.
+ */
+function compareSnapshots(snapshot1Name, snapshot2Name) {
+  // Get data from both snapshots
+  const data1 = snapshot1Name === "current" ? getStudentData() : getSnapshotData(snapshot1Name);
+  const data2 = snapshot2Name === "current" ? getStudentData() : getSnapshotData(snapshot2Name);
+
+  // Create maps for easy lookup
+  const map1 = new Map(data1.map(s => [s.studentName, s]));
+  const map2 = new Map(data2.map(s => [s.studentName, s]));
+
+  const changes = [];
+  const improvements = [];
+  const declines = [];
+
+  // Compare students present in both datasets
+  map2.forEach((student2, name) => {
+    const student1 = map1.get(name);
+    if (student1) {
+      const studentChanges = {};
+      let hasChanges = false;
+      let improved = false;
+      let declined = false;
+
+      // Compare key metrics
+      if (student1.numFGrades !== student2.numFGrades) {
+        studentChanges.numFGrades = {
+          old: student1.numFGrades,
+          new: student2.numFGrades,
+          change: student2.numFGrades - student1.numFGrades
+        };
+        hasChanges = true;
+        if (student2.numFGrades < student1.numFGrades) improved = true;
+        if (student2.numFGrades > student1.numFGrades) declined = true;
+      }
+
+      if (student1.totalAbsences !== student2.totalAbsences) {
+        studentChanges.totalAbsences = {
+          old: student1.totalAbsences,
+          new: student2.totalAbsences,
+          change: student2.totalAbsences - student1.totalAbsences
+        };
+        hasChanges = true;
+        if (student2.totalAbsences > student1.totalAbsences) declined = true;
+      }
+
+      if (student1.unservedDetention !== student2.unservedDetention) {
+        studentChanges.unservedDetention = {
+          old: student1.unservedDetention,
+          new: student2.unservedDetention,
+          change: student2.unservedDetention - student1.unservedDetention
+        };
+        hasChanges = true;
+        if (student2.unservedDetention < student1.unservedDetention) improved = true;
+        if (student2.unservedDetention > student1.unservedDetention) declined = true;
+      }
+
+      if (hasChanges) {
+        changes.push({
+          studentName: name,
+          grade: student2.grade,
+          changes: studentChanges
+        });
+
+        if (improved && !declined) {
+          improvements.push({
+            studentName: name,
+            grade: student2.grade,
+            changes: studentChanges
+          });
+        } else if (declined) {
+          declines.push({
+            studentName: name,
+            grade: student2.grade,
+            changes: studentChanges
+          });
+        }
+      }
+    }
+  });
+
+  // Find new students (in snapshot2 but not in snapshot1)
+  const newStudents = [];
+  map2.forEach((student, name) => {
+    if (!map1.has(name)) {
+      newStudents.push({
+        studentName: name,
+        grade: student.grade
+      });
+    }
+  });
+
+  // Find removed students (in snapshot1 but not in snapshot2)
+  const removedStudents = [];
+  map1.forEach((student, name) => {
+    if (!map2.has(name)) {
+      removedStudents.push({
+        studentName: name,
+        grade: student.grade
+      });
+    }
+  });
+
+  return {
+    snapshot1: snapshot1Name,
+    snapshot2: snapshot2Name,
+    totalChanges: changes.length,
+    changes: changes,
+    improvements: improvements,
+    declines: declines,
+    newStudents: newStudents,
+    removedStudents: removedStudents,
+    summary: {
+      totalStudents1: data1.length,
+      totalStudents2: data2.length,
+      studentsWithChanges: changes.length,
+      studentsImproved: improvements.length,
+      studentsDeclined: declines.length,
+      studentsAdded: newStudents.length,
+      studentsRemoved: removedStudents.length
+    }
+  };
+}
+
+/**
+ * Deletes snapshots older than the specified number of weeks.
+ * @param {number} weeksToKeep - Number of weeks of snapshots to keep (default: 12).
+ * @returns {number} Number of snapshots deleted.
+ */
+function deleteOldSnapshots(weeksToKeep = 12) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - (weeksToKeep * 7));
+
+  let deletedCount = 0;
+
+  sheets.forEach(sheet => {
+    const name = sheet.getName();
+    if (name.startsWith("Snapshot_")) {
+      const dateMatch = name.match(/Snapshot_(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) {
+        const snapshotDate = new Date(dateMatch[1]);
+        if (snapshotDate < cutoffDate) {
+          ss.deleteSheet(sheet);
+          deletedCount++;
+          Logger.log(`Deleted old snapshot: ${name}`);
+        }
+      }
+    }
+  });
+
+  Logger.log(`Deleted ${deletedCount} old snapshots.`);
+  return deletedCount;
+}
+
+/**
+ * Sets up a weekly time-based trigger to create snapshots every Monday at 6:00 AM.
+ * Run this function once to set up the automatic snapshot system.
+ */
+function setupWeeklySnapshotTrigger() {
+  // First, delete any existing triggers for createWeeklySnapshot to avoid duplicates
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'createWeeklySnapshot') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // Create a new weekly trigger for Monday at 6:00 AM
+  ScriptApp.newTrigger('createWeeklySnapshot')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(6)
+    .create();
+
+  Logger.log("Weekly snapshot trigger set up successfully for Mondays at 6:00 AM.");
+}
+
+/**
+ * Removes the weekly snapshot trigger.
+ * Use this if you want to stop automatic snapshots.
+ */
+function removeWeeklySnapshotTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  let removedCount = 0;
+
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'createWeeklySnapshot') {
+      ScriptApp.deleteTrigger(trigger);
+      removedCount++;
+    }
+  });
+
+  Logger.log(`Removed ${removedCount} snapshot trigger(s).`);
+}
+
+// ===============================================================
 // NEW CODE FOR TIER 2 INSTRUCTOR SUMMARY EMAILS
 // ===============================================================
 
