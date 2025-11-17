@@ -165,38 +165,61 @@ function compareSnapshots(snapshot1Name, snapshot2Name) {
       let improved = false;
       let declined = false;
 
-      // Compare key metrics
-      if (student1.numFGrades !== student2.numFGrades) {
-        studentChanges.numFGrades = {
-          old: student1.numFGrades,
-          new: student2.numFGrades,
-          change: student2.numFGrades - student1.numFGrades
-        };
-        hasChanges = true;
-        if (student2.numFGrades < student1.numFGrades) improved = true;
-        if (student2.numFGrades > student1.numFGrades) declined = true;
-      }
+      // Define metrics to track (field name, whether lower is better)
+      const metricsToTrack = [
+        // Academic metrics (lower is better)
+        { field: 'numFGrades', lowerIsBetter: true, category: 'academic' },
 
-      if (student1.totalAbsences !== student2.totalAbsences) {
-        studentChanges.totalAbsences = {
-          old: student1.totalAbsences,
-          new: student2.totalAbsences,
-          change: student2.totalAbsences - student1.totalAbsences
-        };
-        hasChanges = true;
-        if (student2.totalAbsences > student1.totalAbsences) declined = true;
-      }
+        // Detention metrics (lower is better)
+        { field: 'unservedDetention', lowerIsBetter: true, category: 'detention' },
+        { field: 'totalDetention', lowerIsBetter: true, category: 'detention' },
+        { field: 'disciplineDetention', lowerIsBetter: true, category: 'detention' },
+        { field: 'attendanceDetention', lowerIsBetter: true, category: 'detention' },
 
-      if (student1.unservedDetention !== student2.unservedDetention) {
-        studentChanges.unservedDetention = {
-          old: student1.unservedDetention,
-          new: student2.unservedDetention,
-          change: student2.unservedDetention - student1.unservedDetention
-        };
-        hasChanges = true;
-        if (student2.unservedDetention < student1.unservedDetention) improved = true;
-        if (student2.unservedDetention > student1.unservedDetention) declined = true;
-      }
+        // Absence metrics (lower is better)
+        { field: 'totalAbsences', lowerIsBetter: true, category: 'absence' },
+        { field: 'unexcusedAbsences', lowerIsBetter: true, category: 'absence' },
+        { field: 'unexcusedTardies', lowerIsBetter: true, category: 'absence' },
+        { field: 'medicalAbsences', lowerIsBetter: true, category: 'absence' },
+        { field: 'illnessAbsences', lowerIsBetter: true, category: 'absence' },
+        { field: 'truancyAbsences', lowerIsBetter: true, category: 'absence' },
+
+        // Spartan Hour metrics (mixed - more requests is concerning, more skipped is bad)
+        { field: 'spartanHourTotalRequests', lowerIsBetter: true, category: 'spartan' },
+        { field: 'spartanHourSkippedRequests', lowerIsBetter: true, category: 'spartan' },
+        { field: 'spartanHourReqsHighPriority', lowerIsBetter: true, category: 'spartan' },
+
+        // Positive metrics (higher is better)
+        { field: 'totalClubMeetingsAttended', lowerIsBetter: false, category: 'engagement' },
+
+        // Tracking metrics
+        { field: 'consecutiveWeeks', lowerIsBetter: true, category: 'tracking' }
+      ];
+
+      // Check each metric for changes
+      metricsToTrack.forEach(metric => {
+        const oldValue = student1[metric.field] || 0;
+        const newValue = student2[metric.field] || 0;
+
+        if (oldValue !== newValue) {
+          studentChanges[metric.field] = {
+            old: oldValue,
+            new: newValue,
+            change: newValue - oldValue,
+            category: metric.category
+          };
+          hasChanges = true;
+
+          // Determine if this is an improvement or decline
+          if (metric.lowerIsBetter) {
+            if (newValue < oldValue) improved = true;
+            if (newValue > oldValue) declined = true;
+          } else {
+            if (newValue > oldValue) improved = true;
+            if (newValue < oldValue) declined = true;
+          }
+        }
+      });
 
       if (hasChanges) {
         changes.push({

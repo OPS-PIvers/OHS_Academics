@@ -810,15 +810,34 @@
             resultsDiv.classList.remove('hidden');
             compareBtn.disabled = false;
 
+            // Calculate aggregate statistics by category
+            const aggregateStats = {
+                totalAcademicChanges: 0,
+                totalDetentionChanges: 0,
+                totalAbsenceChanges: 0,
+                totalSpartanChanges: 0,
+                totalEngagementChanges: 0
+            };
+
+            comparison.changes.forEach(student => {
+                Object.values(student.changes).forEach(change => {
+                    if (change.category === 'academic') aggregateStats.totalAcademicChanges++;
+                    if (change.category === 'detention') aggregateStats.totalDetentionChanges++;
+                    if (change.category === 'absence') aggregateStats.totalAbsenceChanges++;
+                    if (change.category === 'spartan') aggregateStats.totalSpartanChanges++;
+                    if (change.category === 'engagement') aggregateStats.totalEngagementChanges++;
+                });
+            });
+
             // Populate summary
             const summaryDiv = document.getElementById('comparison-summary');
             summaryDiv.innerHTML = `
                 <div class="bg-white rounded-lg p-4 shadow">
-                    <div class="text-2xl font-bold text-gray-800">${comparison.summary.studentsImproved}</div>
+                    <div class="text-2xl font-bold text-green-700">${comparison.summary.studentsImproved}</div>
                     <div class="text-sm text-gray-600">Students Improved</div>
                 </div>
                 <div class="bg-white rounded-lg p-4 shadow">
-                    <div class="text-2xl font-bold text-gray-800">${comparison.summary.studentsDeclined}</div>
+                    <div class="text-2xl font-bold text-red-700">${comparison.summary.studentsDeclined}</div>
                     <div class="text-sm text-gray-600">Students Declined</div>
                 </div>
                 <div class="bg-white rounded-lg p-4 shadow">
@@ -828,6 +847,16 @@
                 <div class="bg-white rounded-lg p-4 shadow">
                     <div class="text-2xl font-bold text-gray-800">${comparison.summary.totalStudents2}</div>
                     <div class="text-sm text-gray-600">Total Students</div>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-3 shadow col-span-full">
+                    <div class="text-xs font-semibold text-blue-900 mb-2">Changes by Category:</div>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                        <div><span class="font-medium text-purple-700">${aggregateStats.totalAcademicChanges}</span> Academic</div>
+                        <div><span class="font-medium text-orange-700">${aggregateStats.totalDetentionChanges}</span> Detention</div>
+                        <div><span class="font-medium text-red-700">${aggregateStats.totalAbsenceChanges}</span> Attendance</div>
+                        <div><span class="font-medium text-indigo-700">${aggregateStats.totalSpartanChanges}</span> Spartan Hour</div>
+                        <div><span class="font-medium text-green-700">${aggregateStats.totalEngagementChanges}</span> Engagement</div>
+                    </div>
                 </div>
             `;
 
@@ -884,27 +913,84 @@
         }
 
         function formatChanges(changes) {
-            const parts = [];
+            // Group changes by category
+            const categories = {
+                academic: [],
+                detention: [],
+                absence: [],
+                spartan: [],
+                engagement: [],
+                tracking: []
+            };
 
-            if (changes.numFGrades) {
-                const color = changes.numFGrades.change < 0 ? 'text-green-600' : 'text-red-600';
-                const arrow = changes.numFGrades.change < 0 ? '↓' : '↑';
-                parts.push(`<span class="${color}">Failing: ${changes.numFGrades.old} ${arrow} ${changes.numFGrades.new}</span>`);
+            // Field display names
+            const fieldNames = {
+                numFGrades: 'Failing Classes',
+                unservedDetention: 'Unserved Detention',
+                totalDetention: 'Total Detention',
+                disciplineDetention: 'Discipline Detention',
+                attendanceDetention: 'Attendance Detention',
+                totalAbsences: 'Total Absences',
+                unexcusedAbsences: 'Unexcused Absences',
+                unexcusedTardies: 'Unexcused Tardies',
+                medicalAbsences: 'Medical Absences',
+                illnessAbsences: 'Illness Absences',
+                truancyAbsences: 'Truancy Absences',
+                spartanHourTotalRequests: 'Spartan Hour Requests',
+                spartanHourSkippedRequests: 'Skipped Sessions',
+                spartanHourReqsHighPriority: 'High Priority Requests',
+                totalClubMeetingsAttended: 'Club Meetings',
+                consecutiveWeeks: 'Consecutive Weeks on D/F List'
+            };
+
+            // Sort changes into categories
+            Object.keys(changes).forEach(field => {
+                const change = changes[field];
+                const category = change.category || 'other';
+                const displayName = fieldNames[field] || field;
+
+                // Determine color based on whether it's an improvement
+                let color, arrow;
+                if (field === 'totalClubMeetingsAttended') {
+                    // Higher is better for engagement
+                    color = change.change > 0 ? 'text-green-600' : 'text-red-600';
+                    arrow = change.change > 0 ? '↑' : '↓';
+                } else {
+                    // Lower is better for most metrics
+                    color = change.change < 0 ? 'text-green-600' : 'text-red-600';
+                    arrow = change.change < 0 ? '↓' : '↑';
+                }
+
+                const html = `<span class="${color}">${displayName}: ${change.old} ${arrow} ${change.new}</span>`;
+
+                if (categories[category]) {
+                    categories[category].push(html);
+                }
+            });
+
+            // Build HTML output with categories
+            const sections = [];
+
+            if (categories.academic.length > 0) {
+                sections.push(`<div class="mb-1"><strong class="text-xs text-gray-700">Academic:</strong> ${categories.academic.join(', ')}</div>`);
+            }
+            if (categories.detention.length > 0) {
+                sections.push(`<div class="mb-1"><strong class="text-xs text-gray-700">Detention:</strong> ${categories.detention.join(', ')}</div>`);
+            }
+            if (categories.absence.length > 0) {
+                sections.push(`<div class="mb-1"><strong class="text-xs text-gray-700">Attendance:</strong> ${categories.absence.join(', ')}</div>`);
+            }
+            if (categories.spartan.length > 0) {
+                sections.push(`<div class="mb-1"><strong class="text-xs text-gray-700">Spartan Hour:</strong> ${categories.spartan.join(', ')}</div>`);
+            }
+            if (categories.engagement.length > 0) {
+                sections.push(`<div class="mb-1"><strong class="text-xs text-gray-700">Engagement:</strong> ${categories.engagement.join(', ')}</div>`);
+            }
+            if (categories.tracking.length > 0) {
+                sections.push(`<div class="mb-1"><strong class="text-xs text-gray-700">Progress:</strong> ${categories.tracking.join(', ')}</div>`);
             }
 
-            if (changes.totalAbsences) {
-                const color = changes.totalAbsences.change > 0 ? 'text-red-600' : 'text-green-600';
-                const arrow = changes.totalAbsences.change > 0 ? '↑' : '↓';
-                parts.push(`<span class="${color}">Absences: ${changes.totalAbsences.old} ${arrow} ${changes.totalAbsences.new}</span>`);
-            }
-
-            if (changes.unservedDetention) {
-                const color = changes.unservedDetention.change < 0 ? 'text-green-600' : 'text-red-600';
-                const arrow = changes.unservedDetention.change < 0 ? '↓' : '↑';
-                parts.push(`<span class="${color}">Detention: ${changes.unservedDetention.old} ${arrow} ${changes.unservedDetention.new}</span>`);
-            }
-
-            return parts.join(' • ');
+            return sections.join('');
         }
 
     </script>

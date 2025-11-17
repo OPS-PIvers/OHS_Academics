@@ -84,19 +84,41 @@ Once you've run the setup trigger, snapshots will be created automatically every
 
 ### Understanding Comparison Metrics
 
-The system tracks changes in three key metrics:
+The system tracks changes across multiple categories for comprehensive student monitoring:
 
-1. **Failing Grades (numFGrades)**
-   - ↓ Green: Student improved (fewer F's)
-   - ↑ Red: Student declined (more F's)
+#### **Academic Metrics**
+- **Failing Classes (numFGrades)** - Number of classes with F grades
+  - ↓ Green: Student improved (fewer F's)
+  - ↑ Red: Student declined (more F's)
 
-2. **Total Absences**
-   - ↑ Red: More absences (negative)
-   - ↓ Green: Fewer absences (positive)
+#### **Detention Metrics** (all lower is better)
+- **Unserved Detention** - Hours of detention not yet served
+- **Total Detention** - Total detention hours assigned
+- **Discipline Detention** - Detention from behavior issues
+- **Attendance Detention** - Detention from attendance issues
 
-3. **Unserved Detention**
-   - ↓ Green: Less unserved detention (improved)
-   - ↑ Red: More unserved detention (declined)
+#### **Attendance Metrics** (all lower is better)
+- **Total Absences** - Overall absence count
+- **Unexcused Absences** - Absences without valid excuse
+- **Unexcused Tardies** - Late arrivals without excuse
+- **Medical Absences** - Absences for medical appointments
+- **Illness Absences** - Absences due to illness
+- **Truancy Absences** - Unexcused absences (truancy)
+
+#### **Spartan Hour Metrics** (lower is better)
+- **Spartan Hour Requests** - Total intervention requests
+- **Skipped Sessions** - Missed Spartan Hour appointments
+- **High Priority Requests** - Urgent intervention needs
+
+#### **Engagement Metrics** (higher is better)
+- **Club Meetings Attended** - Extracurricular participation
+  - ↑ Green: More attendance (improved)
+  - ↓ Red: Less attendance (declined)
+
+#### **Progress Tracking**
+- **Consecutive Weeks on D/F List** - Weeks student has been struggling
+  - ↓ Green: Fewer weeks (improvement)
+  - ↑ Red: More weeks (ongoing concern)
 
 ## Advanced Features
 
