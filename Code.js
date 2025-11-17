@@ -7,6 +7,284 @@
  */
 
 // ===============================================================
+// HISTORICAL SNAPSHOT SYSTEM - GLOBAL AGGREGATE DATA ONLY
+// ===============================================================
+
+/**
+ * Centralized configuration for snapshot metrics.
+ * Ensures consistency across snapshot creation, retrieval, and comparison.
+ */
+const SNAPSHOT_METRICS_CONFIG = [
+  { key: 'snapshotDate', header: 'Snapshot Date', index: 0, type: 'date' },
+  { key: 'totalStudents', header: 'Total Students', index: 1, type: 'number', aggregator: (data) => data.length },
+  { key: 'ineligibleStudents', header: 'Ineligible Students', index: 2, type: 'number', aggregator: (data) => data.filter(s => s.ineligible).length },
+  { key: 'ineligibilityRate', header: 'Ineligibility Rate (%)', index: 3, type: 'number', precision: 1, aggregator: (data, metrics) => metrics.totalStudents > 0 ? (metrics.ineligibleStudents / metrics.totalStudents) * 100 : 0 },
+  { key: 'studentsWithFGrades', header: 'Students with F Grades', index: 4, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades > 0).length },
+  { key: 'studentsWith1F', header: 'Students with 1 F', index: 5, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades === 1).length },
+  { key: 'studentsWith2PlusF', header: 'Students with 2+ F', index: 6, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades >= 2).length },
+  { key: 'totalFGrades', header: 'Total F Grades', index: 7, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.numFGrades, 0) },
+  { key: 'avgUnservedDetention', header: 'Avg Unserved Detention', index: 8, type: 'number', precision: 2, aggregator: (data, metrics) => metrics.totalStudents > 0 ? data.reduce((sum, s) => sum + s.unservedDetention, 0) / metrics.totalStudents : 0 },
+  { key: 'studentsWithDetention', header: 'Students with Detention', index: 9, type: 'number', aggregator: (data) => data.filter(s => s.unservedDetention > 0).length },
+  { key: 'totalAbsences', header: 'Total Absences', index: 10, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.totalAbsences, 0) },
+  { key: 'avgAbsences', header: 'Avg Absences', index: 11, type: 'number', precision: 2, aggregator: (data, metrics) => metrics.totalStudents > 0 ? metrics.totalAbsences / metrics.totalStudents : 0 },
+  { key: 'unexcusedAbsences', header: 'Unexcused Absences', index: 12, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.unexcusedAbsences, 0) },
+  { key: 'truancyAbsences', header: 'Truancy Absences', index: 13, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.truancyAbsences, 0) },
+  { key: 'medicalAbsences', header: 'Medical Absences', index: 14, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.medicalAbsences, 0) },
+  { key: 'illnessAbsences', header: 'Illness Absences', index: 15, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.illnessAbsences, 0) },
+  { key: 'spartanHourTotalRequests', header: 'Spartan Hour Total Requests', index: 16, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0) },
+  { key: 'spartanHourSkippedRequests', header: 'Spartan Hour Skipped Requests', index: 17, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0) },
+  { key: 'spartanHourHighPriorityRequests', header: 'Spartan Hour High Priority Requests', index: 18, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0) },
+  { key: 'studentsWithClubParticipation', header: 'Students with Club Participation', index: 19, type: 'number', aggregator: (data) => data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended?.trim() !== '')).length },
+  { key: 'studentsInActivities', header: 'Students in Activities', index: 20, type: 'number', aggregator: (data) => data.filter(s => s.activity && s.activity.trim() !== '').length },
+  { key: 'studentsWithTier2', header: 'Students with Tier 2', index: 21, type: 'number', aggregator: (data) => data.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '').length },
+  { key: 'studentsWithSpecialEd', header: 'Students with Special Ed', index: 22, type: 'number', aggregator: (data) => data.filter(s => s.caseManager && s.caseManager.trim() !== '').length }
+];
+
+/**
+ * Creates a snapshot of GLOBAL AGGREGATE METRICS only (no individual student data).
+ * This function should be triggered every Monday to preserve data before Tuesday updates.
+ * @returns {boolean} True if snapshot was created successfully, false otherwise.
+ */
+function createWeeklySnapshot() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Get or create the Historical Snapshots sheet
+    let snapshotSheet = ss.getSheetByName("Historical Snapshots");
+    if (!snapshotSheet) {
+      snapshotSheet = ss.insertSheet("Historical Snapshots");
+
+      // Generate headers from centralized config
+      const headers = SNAPSHOT_METRICS_CONFIG.map(metric => metric.header);
+      snapshotSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      snapshotSheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+      snapshotSheet.setFrozenRows(1);
+    }
+
+    // Get current student data to calculate aggregates
+    const studentData = getStudentData();
+
+    if (!studentData || studentData.length === 0) {
+      Logger.log("No student data to snapshot.");
+      return false;
+    }
+
+    // Calculate all metrics using centralized config
+    const metrics = { snapshotDate: new Date() };
+
+    // First pass: calculate metrics that don't depend on other metrics
+    SNAPSHOT_METRICS_CONFIG.slice(1).forEach(config => {
+      if (config.aggregator && config.aggregator.length === 1) {
+        metrics[config.key] = config.aggregator(studentData);
+      }
+    });
+
+    // Second pass: calculate metrics that depend on other metrics (like rates and averages)
+    SNAPSHOT_METRICS_CONFIG.slice(1).forEach(config => {
+      if (config.aggregator && config.aggregator.length > 1) {
+        metrics[config.key] = config.aggregator(studentData, metrics);
+      }
+    });
+
+    // Build snapshot row in correct column order using config indices
+    const snapshotRow = SNAPSHOT_METRICS_CONFIG.map(config => metrics[config.key]);
+
+    // Append to snapshot sheet
+    const nextRow = snapshotSheet.getLastRow() + 1;
+    snapshotSheet.getRange(nextRow, 1, 1, snapshotRow.length).setValues([snapshotRow]);
+
+    Logger.log(`Successfully created global snapshot on ${metrics.snapshotDate}: ${metrics.totalStudents} students, ${metrics.ineligibilityRate.toFixed(1)}% ineligible`);
+    return true;
+
+  } catch (e) {
+    Logger.log(`Error creating snapshot: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Sets up a weekly trigger to run every Monday at 11:00 AM CST.
+ * This ensures data is captured before the Tuesday 12pm update.
+ * Call this function once to set up the trigger.
+ */
+function setupWeeklySnapshotTrigger() {
+  // Delete any existing triggers for createWeeklySnapshot
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'createWeeklySnapshot') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // Create new trigger for Monday at 11:00 AM
+  ScriptApp.newTrigger('createWeeklySnapshot')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(11)
+    .create();
+
+  Logger.log("Weekly snapshot trigger set up successfully for Mondays at 11:00 AM.");
+}
+
+/**
+ * Gets all snapshots as aggregate data.
+ * @returns {Object[]} Array of snapshot objects with aggregate metrics.
+ */
+function getAllSnapshots() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const snapshotSheet = ss.getSheetByName("Historical Snapshots");
+
+    if (!snapshotSheet || snapshotSheet.getLastRow() < 2) {
+      return [];
+    }
+
+    const numRows = snapshotSheet.getLastRow() - 1;
+    const numCols = snapshotSheet.getLastColumn();
+    const data = snapshotSheet.getRange(2, 1, numRows, numCols).getValues();
+
+    // Map each row to an object using centralized config (no hardcoded indices)
+    return data.map(row => {
+      const snapshot = {};
+      SNAPSHOT_METRICS_CONFIG.forEach(config => {
+        snapshot[config.key] = row[config.index];
+      });
+      // Add formatted date for convenience
+      snapshot.formattedDate = Utilities.formatDate(snapshot.snapshotDate, Session.getScriptTimeZone(), "MMM d, yyyy");
+      // Maintain backward compatibility with 'date' property
+      snapshot.date = snapshot.snapshotDate;
+      return snapshot;
+    });
+  } catch (e) {
+    Logger.log(`Error getting snapshots: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Gets a single snapshot by date.
+ * @param {Date} snapshotDate - The date of the snapshot to retrieve.
+ * @returns {Object} Snapshot object with aggregate metrics.
+ */
+function getSnapshotByDate(snapshotDate) {
+  try {
+    const snapshots = getAllSnapshots();
+    const targetTime = new Date(snapshotDate).setHours(0, 0, 0, 0);
+
+    return snapshots.find(snapshot => {
+      const snapshotTime = new Date(snapshot.date).setHours(0, 0, 0, 0);
+      return snapshotTime === targetTime;
+    }) || null;
+  } catch (e) {
+    Logger.log(`Error getting snapshot by date: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gets a list of all available snapshots with metadata for the frontend.
+ * @returns {Object[]} Array of snapshot metadata objects.
+ */
+function getSnapshotList() {
+  try {
+    const snapshots = getAllSnapshots();
+    return snapshots.map(snapshot => ({
+      date: snapshot.date,
+      formattedDate: snapshot.formattedDate,
+      timestamp: snapshot.date.getTime()
+    })).reverse(); // Newest first
+  } catch (e) {
+    Logger.log(`Error getting snapshot list: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Compares two snapshots and returns the global metric differences.
+ * @param {Date} date1 - First snapshot date (older).
+ * @param {Date} date2 - Second snapshot date (newer).
+ * @returns {Object} Object containing comparison of aggregate metrics.
+ */
+function compareSnapshots(date1, date2) {
+  try {
+    // Input validation: ensure dates are valid Date objects
+    if (!(date1 instanceof Date) || isNaN(date1.getTime())) {
+      return { error: "Invalid date1 parameter. Must be a valid Date object." };
+    }
+    if (!(date2 instanceof Date) || isNaN(date2.getTime())) {
+      return { error: "Invalid date2 parameter. Must be a valid Date object." };
+    }
+
+    const snapshot1 = getSnapshotByDate(date1);
+    const snapshot2 = getSnapshotByDate(date2);
+
+    if (!snapshot1 || !snapshot2) {
+      return {
+        error: "One or both snapshots not found",
+        date1: Utilities.formatDate(date1, Session.getScriptTimeZone(), "MMM d, yyyy"),
+        date2: Utilities.formatDate(date2, Session.getScriptTimeZone(), "MMM d, yyyy")
+      };
+    }
+
+    // Use centralized config (exclude date column from comparison)
+    const metricsToCompare = SNAPSHOT_METRICS_CONFIG.filter(m => m.key !== 'snapshotDate');
+
+    const changes = metricsToCompare.map(metric => {
+      const value1 = snapshot1[metric.key] || 0;
+      const value2 = snapshot2[metric.key] || 0;
+      const delta = value2 - value1;
+
+      // Handle division by zero for percent change calculation
+      let percentChange;
+      if (value1 === 0 && value2 === 0) {
+        percentChange = 0; // No change: both are zero
+      } else if (value1 === 0 && value2 !== 0) {
+        percentChange = 'N/A (from zero)'; // Percent change from zero baseline is undefined/infinite
+      } else {
+        percentChange = ((delta / value1) * 100).toFixed(1);
+      }
+
+      return {
+        metric: metric.header,
+        oldValue: metric.precision && typeof value1 === 'number' ? value1.toFixed(metric.precision) : value1,
+        newValue: metric.precision && typeof value2 === 'number' ? value2.toFixed(metric.precision) : value2,
+        delta: metric.precision && typeof delta === 'number' ? delta.toFixed(metric.precision) : delta,
+        percentChange: percentChange
+      };
+    }).filter(change => parseFloat(change.delta) !== 0); // Only show metrics that changed
+
+    return {
+      date1: snapshot1.formattedDate,
+      date2: snapshot2.formattedDate,
+      changes: changes,
+      allMetrics: metricsToCompare.map(metric => ({
+        metric: metric.header,
+        value1: metric.precision && typeof snapshot1[metric.key] === 'number' ? snapshot1[metric.key].toFixed(metric.precision) : snapshot1[metric.key],
+        value2: metric.precision && typeof snapshot2[metric.key] === 'number' ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
+      }))
+    };
+  } catch (e) {
+    Logger.log(`Error comparing snapshots: ${e.message}`);
+    return { error: e.message };
+  }
+}
+
+/**
+ * Gets all snapshots for trend visualization (already includes aggregate metrics).
+ * @returns {Object[]} Array of snapshot objects sorted oldest to newest.
+ */
+function getHistoricalTrends() {
+  try {
+    const snapshots = getAllSnapshots();
+    // Sort oldest to newest for trend charts
+    return snapshots.sort((a, b) => new Date(a.date) - new Date(b.date));
+  } catch (e) {
+    Logger.log(`Error getting historical trends: ${e.message}`);
+    return [];
+  }
+}
+
+// ===============================================================
 // NEW CODE FOR TIER 2 INSTRUCTOR SUMMARY EMAILS
 // ===============================================================
 

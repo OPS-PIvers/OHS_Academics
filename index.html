@@ -69,6 +69,7 @@
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                     <button id="tab-students" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-white border-white">Student List</button>
                     <button id="tab-visuals" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Data Visualizations</button>
+                    <button id="tab-historical" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Historical Trends</button>
                 </nav>
             </div>
 
@@ -137,12 +138,57 @@
                     <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Club Participation by Grade</h2><div class="chart-container"><canvas id="club-meetings-by-grade-chart"></canvas></div></div>
                 </div>
             </div>
+
+            <div id="tab-content-historical" class="hidden">
+                <div class="card mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Historical Snapshot Management</h2>
+                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create Snapshot Now">Create Snapshot Now</button>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">Snapshots are automatically captured every Monday at 11:00 AM before the Tuesday data updates. View trends and compare data week-over-week.</p>
+                    <!-- Inline notification message div -->
+                    <div id="snapshot-message" class="hidden mb-4 p-4 rounded-lg" role="alert" aria-live="polite"></div>
+                    <div id="snapshot-info" class="text-sm text-gray-700"></div>
+                </div>
+
+                <div class="card mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Week-Over-Week Comparison</h2>
+                    <!-- Inline validation message div -->
+                    <div id="comparison-message" class="hidden mb-4 p-3 rounded-lg" role="alert" aria-live="polite"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="comparison-date-1" class="block text-sm font-medium text-gray-700 mb-1">Select First Week</label>
+                            <select id="comparison-date-1" class="filter-select w-full" aria-label="Select first snapshot date for comparison">
+                                <option value="">Select a snapshot date...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="comparison-date-2" class="block text-sm font-medium text-gray-700 mb-1">Select Second Week</label>
+                            <select id="comparison-date-2" class="filter-select w-full" aria-label="Select second snapshot date for comparison">
+                                <option value="">Select a snapshot date...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="compare-snapshots-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition" aria-label="Compare selected snapshots">Compare Snapshots</button>
+                    <div id="comparison-results" class="mt-4"></div>
+                </div>
+
+                <div id="historical-charts-container" class="hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Students with Failing Grades Over Time</h2><div class="chart-container"><canvas id="historical-failing-chart"></canvas></div></div>
+                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Average Absences Over Time</h2><div class="chart-container"><canvas id="historical-absences-chart"></canvas></div></div>
+                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Unserved Detention Over Time</h2><div class="chart-container"><canvas id="historical-detention-chart"></canvas></div></div>
+                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ineligibility Rate Over Time</h2><div class="chart-container"><canvas id="historical-ineligibility-chart"></canvas></div></div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
     <script>
         let allStudentData = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
         let baselineKPIs = {};
+        let historicalData = null;
         const tooltip = document.getElementById('tooltip');
 
         document.addEventListener('DOMContentLoaded', () => google.script.run.withSuccessHandler(initializeDashboard).withFailureHandler(handleError).getStudentData());
@@ -169,25 +215,33 @@
         function setupTabs() {
             const tabStudents = document.getElementById('tab-students');
             const tabVisuals = document.getElementById('tab-visuals');
+            const tabHistorical = document.getElementById('tab-historical');
             const contentStudents = document.getElementById('tab-content-students');
             const contentVisuals = document.getElementById('tab-content-visuals');
+            const contentHistorical = document.getElementById('tab-content-historical');
 
-            tabStudents.addEventListener('click', () => {
-                tabStudents.classList.add('text-white', 'border-white');
-                tabStudents.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabVisuals.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabVisuals.classList.remove('text-white', 'border-white');
-                contentStudents.classList.remove('hidden');
-                contentVisuals.classList.add('hidden');
-            });
+            const switchTab = (activeTab, activeContent) => {
+                [tabStudents, tabVisuals, tabHistorical].forEach(tab => {
+                    const isActive = tab === activeTab;
+                    tab.classList.toggle('text-white', isActive);
+                    tab.classList.toggle('border-white', isActive);
+                    tab.classList.toggle('text-gray-400', !isActive);
+                    tab.classList.toggle('border-transparent', !isActive);
+                    tab.classList.toggle('hover:text-white', !isActive);
+                    tab.classList.toggle('hover:border-gray-300', !isActive);
+                });
+                [contentStudents, contentVisuals, contentHistorical].forEach(content => {
+                    content.classList.toggle('hidden', content !== activeContent);
+                });
+            };
 
-            tabVisuals.addEventListener('click', () => {
-                tabVisuals.classList.add('text-white', 'border-white');
-                tabVisuals.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabStudents.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                tabStudents.classList.remove('text-white', 'border-white');
-                contentVisuals.classList.remove('hidden');
-                contentStudents.classList.add('hidden');
+            tabStudents.addEventListener('click', () => switchTab(tabStudents, contentStudents));
+            tabVisuals.addEventListener('click', () => switchTab(tabVisuals, contentVisuals));
+            tabHistorical.addEventListener('click', () => {
+                switchTab(tabHistorical, contentHistorical);
+                if (!historicalData) {
+                    loadHistoricalData();
+                }
             });
         }
 
@@ -575,16 +629,408 @@
             document.getElementById('reset-student-filters-btn').addEventListener('click', () => {
                 document.getElementById('student-search').value = '';
                 document.getElementById('student-activity-filter').value = 'all';
-                
+
                 document.querySelector('#student-grade-filters .filter-btn.active').classList.remove('active');
                 document.querySelector('#student-grade-filters .filter-btn[data-grade="all"]').classList.add('active');
-                
+
                 document.querySelector('#student-eligibility-filters .filter-btn.active').classList.remove('active');
                 document.querySelector('#student-eligibility-filters .filter-btn[data-status="all"]').classList.add('active');
-                
+
                 studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' };
                 applyStudentListFilters();
             });
+        }
+
+        // ===============================================================
+        // HISTORICAL TRENDS FUNCTIONALITY
+        // ===============================================================
+
+        function loadHistoricalData() {
+            document.getElementById('snapshot-info').innerHTML = '<p class="text-gray-500">Loading historical data...</p>';
+
+            google.script.run
+                .withSuccessHandler(data => {
+                    historicalData = data;
+                    displayHistoricalInfo();
+                    populateSnapshotSelectors();
+                    if (data && data.length > 0) {
+                        renderHistoricalCharts();
+                    }
+                })
+                .withFailureHandler(error => {
+                    console.error('Error loading historical data:', error);
+                    document.getElementById('snapshot-info').innerHTML = '<p class="text-red-500">Error loading historical data. Please try again.</p>';
+                })
+                .getHistoricalTrends();
+        }
+
+        function displayHistoricalInfo() {
+            const infoDiv = document.getElementById('snapshot-info');
+            if (!historicalData || historicalData.length === 0) {
+                infoDiv.innerHTML = '<p class="text-yellow-600 font-medium">No historical snapshots found. Click "Create Snapshot Now" to capture the current data.</p>';
+            } else {
+                const latestSnapshot = historicalData[historicalData.length - 1];
+                infoDiv.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-600">Total Snapshots</p>
+                            <p class="text-2xl font-bold text-blue-700">${historicalData.length}</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-600">Latest Snapshot</p>
+                            <p class="text-lg font-semibold text-green-700">${latestSnapshot.formattedDate}</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-600">Students Tracked</p>
+                            <p class="text-2xl font-bold text-purple-700">${latestSnapshot.totalStudents}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function populateSnapshotSelectors() {
+            google.script.run
+                .withSuccessHandler(snapshots => {
+                    const selector1 = document.getElementById('comparison-date-1');
+                    const selector2 = document.getElementById('comparison-date-2');
+
+                    selector1.innerHTML = '<option value="">Select a snapshot date...</option>';
+                    selector2.innerHTML = '<option value="">Select a snapshot date...</option>';
+
+                    snapshots.forEach(snapshot => {
+                        selector1.innerHTML += `<option value="${snapshot.timestamp}">${snapshot.formattedDate}</option>`;
+                        selector2.innerHTML += `<option value="${snapshot.timestamp}">${snapshot.formattedDate}</option>`;
+                    });
+                })
+                .withFailureHandler(error => console.error('Error loading snapshot list:', error))
+                .getSnapshotList();
+        }
+
+        function renderHistoricalCharts() {
+            if (!historicalData || historicalData.length === 0) return;
+
+            document.getElementById('historical-charts-container').classList.remove('hidden');
+            const chartColors = { blue: 'rgba(59, 130, 246, 0.7)', red: 'rgba(239, 68, 68, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)' };
+
+            const labels = historicalData.map(d => d.formattedDate);
+
+            // Failing Grades Chart
+            const failingData = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '2+ F Grades (Ineligible)',
+                        data: historicalData.map(d => d.studentsWith2PlusF),
+                        backgroundColor: chartColors.red,
+                        borderColor: chartColors.red,
+                        borderWidth: 2
+                    },
+                    {
+                        label: '1 F Grade (At Risk)',
+                        data: historicalData.map(d => d.studentsWith1F),
+                        backgroundColor: chartColors.yellow,
+                        borderColor: chartColors.yellow,
+                        borderWidth: 2
+                    }
+                ]
+            };
+
+            if (charts.historicalFailing) charts.historicalFailing.destroy();
+            charts.historicalFailing = new Chart(document.getElementById('historical-failing-chart'), {
+                type: 'line',
+                data: failingData,
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Number of Students' } },
+                        x: { title: { display: true, text: 'Snapshot Date' } }
+                    }
+                }
+            });
+
+            // Average Absences Chart
+            if (charts.historicalAbsences) charts.historicalAbsences.destroy();
+            charts.historicalAbsences = new Chart(document.getElementById('historical-absences-chart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Absences',
+                        data: historicalData.map(d => typeof d.avgAbsences === 'number' ? d.avgAbsences : 0),
+                        backgroundColor: chartColors.blue,
+                        borderColor: chartColors.blue,
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Average Absences (Periods)' } },
+                        x: { title: { display: true, text: 'Snapshot Date' } }
+                    }
+                }
+            });
+
+            // Detention Chart
+            if (charts.historicalDetention) charts.historicalDetention.destroy();
+            charts.historicalDetention = new Chart(document.getElementById('historical-detention-chart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Unserved Detention',
+                        data: historicalData.map(d => typeof d.avgUnservedDetention === 'number' ? d.avgUnservedDetention : 0),
+                        backgroundColor: chartColors.yellow
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Average Hours' } },
+                        x: { title: { display: true, text: 'Snapshot Date' } }
+                    }
+                }
+            });
+
+            // Ineligibility Rate Chart - uses pre-calculated backend value
+            if (charts.historicalIneligibility) charts.historicalIneligibility.destroy();
+            charts.historicalIneligibility = new Chart(document.getElementById('historical-ineligibility-chart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ineligibility Rate',
+                        data: historicalData.map(d => typeof d.ineligibilityRate === 'number' ? d.ineligibilityRate : 0),
+                        backgroundColor: chartColors.red,
+                        borderColor: chartColors.red,
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Percentage (%)' } },
+                        x: { title: { display: true, text: 'Snapshot Date' } }
+                    }
+                }
+            });
+        }
+
+        // Constants for maintainability
+        const SUCCESS_MESSAGE_TIMEOUT = 5000; // Auto-hide timeout for success messages
+        const CONCERNING_METRICS = ['Ineligible', 'Failing', 'Detention', 'Absences', 'Skipped', 'Truancy'];
+
+        // Helper function to show inline messages instead of alerts
+        function showMessage(elementId, message, type = 'info') {
+            const messageDiv = document.getElementById(elementId);
+            messageDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-blue-100', 'text-green-800', 'text-red-800', 'text-blue-800');
+
+            if (type === 'success') {
+                messageDiv.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                messageDiv.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                messageDiv.classList.add('bg-blue-100', 'text-blue-800');
+            }
+
+            messageDiv.textContent = message;
+
+            // Auto-hide success messages after configured timeout
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.classList.add('hidden');
+                }, SUCCESS_MESSAGE_TIMEOUT);
+            }
+        }
+
+        // Helper function to determine if a metric change is concerning
+        function isMetricConcerning(metricName) {
+            return CONCERNING_METRICS.some(keyword => metricName.includes(keyword));
+        }
+
+        // Helper function to get change indicators
+        function getMetricChangeIndicator(metricName, delta) {
+            const isConcerning = isMetricConcerning(metricName);
+            let rowColor, deltaColor, arrow, textIndicator;
+
+            if (delta > 0) {
+                if (isConcerning) {
+                    rowColor = 'bg-red-50';
+                    deltaColor = 'text-red-700 font-semibold';
+                    arrow = '↑';
+                    textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
+                } else {
+                    rowColor = 'bg-green-50';
+                    deltaColor = 'text-green-700 font-semibold';
+                    arrow = '↑';
+                    textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
+                }
+            } else if (delta < 0) {
+                if (isConcerning) {
+                    rowColor = 'bg-green-50';
+                    deltaColor = 'text-green-700 font-semibold';
+                    arrow = '↓';
+                    textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
+                } else {
+                    rowColor = 'bg-red-50';
+                    deltaColor = 'text-red-700 font-semibold';
+                    arrow = '↓';
+                    textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
+                }
+            } else {
+                rowColor = 'bg-white';
+                deltaColor = 'text-gray-600';
+                arrow = '';
+                textIndicator = '';
+            }
+
+            return { rowColor, deltaColor, arrow, textIndicator };
+        }
+
+        // Helper function to format error messages
+        function formatErrorMessage(error) {
+            return error && error.message ? error.message : String(error);
+        }
+
+        // Setup event listeners for historical tab
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('create-snapshot-btn').addEventListener('click', () => {
+                const btn = document.getElementById('create-snapshot-btn');
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.setAttribute('aria-disabled', 'true');
+                btn.textContent = 'Creating...';
+
+                google.script.run
+                    .withSuccessHandler(() => {
+                        btn.disabled = false;
+                        btn.removeAttribute('aria-busy');
+                        btn.removeAttribute('aria-disabled');
+                        btn.textContent = 'Create Snapshot Now';
+                        historicalData = null;
+                        loadHistoricalData();
+                        showMessage('snapshot-message', 'Snapshot created successfully!', 'success');
+                    })
+                    .withFailureHandler(error => {
+                        btn.disabled = false;
+                        btn.removeAttribute('aria-busy');
+                        btn.removeAttribute('aria-disabled');
+                        btn.textContent = 'Create Snapshot Now';
+                        showMessage('snapshot-message', 'Error creating snapshot: ' + formatErrorMessage(error), 'error');
+                    })
+                    .createWeeklySnapshot();
+            });
+
+            document.getElementById('compare-snapshots-btn').addEventListener('click', () => {
+                const date1 = document.getElementById('comparison-date-1').value;
+                const date2 = document.getElementById('comparison-date-2').value;
+
+                // Clear previous messages
+                document.getElementById('comparison-message').classList.add('hidden');
+
+                if (!date1 || !date2) {
+                    showMessage('comparison-message', 'Please select two snapshot dates to compare.', 'error');
+                    return;
+                }
+
+                if (date1 === date2) {
+                    showMessage('comparison-message', 'Please select two different snapshot dates.', 'error');
+                    return;
+                }
+
+                document.getElementById('comparison-results').innerHTML = '<p class="text-gray-500">Comparing snapshots...</p>';
+
+                google.script.run
+                    .withSuccessHandler(comparison => {
+                        displayComparisonResults(comparison);
+                    })
+                    .withFailureHandler(error => {
+                        document.getElementById('comparison-results').innerHTML = '<p class="text-red-500">Error comparing snapshots: ' + formatErrorMessage(error) + '</p>';
+                    })
+                    .compareSnapshots(new Date(parseInt(date1)), new Date(parseInt(date2)));
+            });
+        });
+
+        function displayComparisonResults(comparison) {
+            if (!comparison) {
+                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">No data available for comparison.</p>`;
+                return;
+            }
+            if (comparison.error) {
+                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">${comparison.error}</p>`;
+                return;
+            }
+
+            const changedCount = comparison.changes ? comparison.changes.length : 0;
+            let html = `
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h3 class="text-lg font-semibold mb-2">Global Metrics Comparison</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><strong>From:</strong> ${comparison.date1}</div>
+                        <div><strong>To:</strong> ${comparison.date2}</div>
+                        <div class="col-span-2"><strong>Metrics that Changed:</strong> ${changedCount}</div>
+                    </div>
+                </div>
+            `;
+
+            if (changedCount > 0) {
+                html += '<div class="mt-4"><h4 class="font-semibold mb-2">Changes in Global Metrics:</h4><div class="max-h-96 overflow-y-auto"><table class="w-full border-collapse border border-gray-300"><thead class="bg-gray-100"><tr><th class="border border-gray-300 px-4 py-2 text-left">Metric</th><th class="border border-gray-300 px-4 py-2 text-center">Week 1</th><th class="border border-gray-300 px-4 py-2 text-center">Week 2</th><th class="border border-gray-300 px-4 py-2 text-center">Change</th><th class="border border-gray-300 px-4 py-2 text-center">% Change</th></tr></thead><tbody>';
+
+                comparison.changes.forEach(change => {
+                    const delta = parseFloat(change.delta);
+                    // Handle 'N/A' for percent change when baseline is zero
+                    const percentChange = change.percentChange === 'N/A' ? 'N/A' : parseFloat(change.percentChange);
+
+                    // Use helper function to determine styling
+                    const { rowColor, deltaColor, arrow, textIndicator } = getMetricChangeIndicator(change.metric, delta);
+
+                    // Format percent change display
+                    const percentDisplay = percentChange === 'N/A'
+                        ? 'N/A'
+                        : `${percentChange > 0 ? '+' : ''}${percentChange}%`;
+
+                    // Improved aria-label for screen readers
+                    const ariaLabel = delta === 0
+                        ? 'No change'
+                        : `Change: ${delta > 0 ? 'Increased' : 'Decreased'} by ${Math.abs(delta)}`;
+
+                    html += `<tr class="${rowColor}">
+                        <td class="border border-gray-300 px-4 py-2">${textIndicator}${change.metric}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center">${change.oldValue}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center">${change.newValue}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}" aria-label="${ariaLabel}">${arrow} ${delta > 0 ? '+' : ''}${change.delta}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}">${percentDisplay}</td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div></div>';
+            } else {
+                html += '<p class="text-gray-600 mt-4">No significant changes detected between these snapshots.</p>';
+            }
+
+            // Add full metrics table
+            if (comparison.allMetrics && comparison.allMetrics.length > 0) {
+                html += '<div class="mt-6"><h4 class="font-semibold mb-2">All Metrics (Side-by-Side):</h4><div class="max-h-96 overflow-y-auto"><table class="w-full border-collapse border border-gray-300 text-sm"><thead class="bg-gray-100"><tr><th class="border border-gray-300 px-3 py-2 text-left">Metric</th><th class="border border-gray-300 px-3 py-2 text-center">' + comparison.date1 + '</th><th class="border border-gray-300 px-3 py-2 text-center">' + comparison.date2 + '</th></tr></thead><tbody>';
+
+                comparison.allMetrics.forEach(metric => {
+                    html += `<tr class="bg-white hover:bg-gray-50">
+                        <td class="border border-gray-300 px-3 py-2">${metric.metric}</td>
+                        <td class="border border-gray-300 px-3 py-2 text-center">${metric.value1}</td>
+                        <td class="border border-gray-300 px-3 py-2 text-center">${metric.value2}</td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div></div>';
+            }
+
+            document.getElementById('comparison-results').innerHTML = html;
         }
 
     </script>
