@@ -18,15 +18,15 @@ const SNAPSHOT_METRICS_CONFIG = [
   { key: 'snapshotDate', header: 'Snapshot Date', index: 0, type: 'date' },
   { key: 'totalStudents', header: 'Total Students', index: 1, type: 'number', aggregator: (data) => data.length },
   { key: 'ineligibleStudents', header: 'Ineligible Students', index: 2, type: 'number', aggregator: (data) => data.filter(s => s.ineligible).length },
-  { key: 'ineligibilityRate', header: 'Ineligibility Rate (%)', index: 3, type: 'number', precision: 1, aggregator: (data, metrics) => (metrics.ineligibleStudents / metrics.totalStudents) * 100 },
+  { key: 'ineligibilityRate', header: 'Ineligibility Rate (%)', index: 3, type: 'number', precision: 1, aggregator: (data, metrics) => metrics.totalStudents > 0 ? (metrics.ineligibleStudents / metrics.totalStudents) * 100 : 0 },
   { key: 'studentsWithFGrades', header: 'Students with F Grades', index: 4, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades > 0).length },
   { key: 'studentsWith1F', header: 'Students with 1 F', index: 5, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades === 1).length },
   { key: 'studentsWith2PlusF', header: 'Students with 2+ F', index: 6, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades >= 2).length },
   { key: 'totalFGrades', header: 'Total F Grades', index: 7, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.numFGrades, 0) },
-  { key: 'avgUnservedDetention', header: 'Avg Unserved Detention', index: 8, type: 'number', precision: 2, aggregator: (data, metrics) => data.reduce((sum, s) => sum + s.unservedDetention, 0) / metrics.totalStudents },
+  { key: 'avgUnservedDetention', header: 'Avg Unserved Detention', index: 8, type: 'number', precision: 2, aggregator: (data, metrics) => metrics.totalStudents > 0 ? data.reduce((sum, s) => sum + s.unservedDetention, 0) / metrics.totalStudents : 0 },
   { key: 'studentsWithDetention', header: 'Students with Detention', index: 9, type: 'number', aggregator: (data) => data.filter(s => s.unservedDetention > 0).length },
   { key: 'totalAbsences', header: 'Total Absences', index: 10, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.totalAbsences, 0) },
-  { key: 'avgAbsences', header: 'Avg Absences', index: 11, type: 'number', precision: 2, aggregator: (data, metrics) => metrics.totalAbsences / metrics.totalStudents },
+  { key: 'avgAbsences', header: 'Avg Absences', index: 11, type: 'number', precision: 2, aggregator: (data, metrics) => metrics.totalStudents > 0 ? metrics.totalAbsences / metrics.totalStudents : 0 },
   { key: 'unexcusedAbsences', header: 'Unexcused Absences', index: 12, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.unexcusedAbsences, 0) },
   { key: 'truancyAbsences', header: 'Truancy Absences', index: 13, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.truancyAbsences, 0) },
   { key: 'medicalAbsences', header: 'Medical Absences', index: 14, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.medicalAbsences, 0) },
@@ -246,9 +246,9 @@ function compareSnapshots(date1, date2) {
 
       return {
         metric: metric.header,
-        oldValue: metric.precision ? value1.toFixed(metric.precision) : value1,
-        newValue: metric.precision ? value2.toFixed(metric.precision) : value2,
-        delta: metric.precision ? delta.toFixed(metric.precision) : delta,
+        oldValue: metric.precision && typeof value1 === 'number' ? value1.toFixed(metric.precision) : value1,
+        newValue: metric.precision && typeof value2 === 'number' ? value2.toFixed(metric.precision) : value2,
+        delta: metric.precision && typeof delta === 'number' ? delta.toFixed(metric.precision) : delta,
         percentChange: percentChange
       };
     }).filter(change => parseFloat(change.delta) !== 0); // Only show metrics that changed
@@ -259,8 +259,8 @@ function compareSnapshots(date1, date2) {
       changes: changes,
       allMetrics: metricsToCompare.map(metric => ({
         metric: metric.header,
-        value1: metric.precision ? snapshot1[metric.key].toFixed(metric.precision) : snapshot1[metric.key],
-        value2: metric.precision ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
+        value1: metric.precision && typeof snapshot1[metric.key] === 'number' ? snapshot1[metric.key].toFixed(metric.precision) : snapshot1[metric.key],
+        value2: metric.precision && typeof snapshot2[metric.key] === 'number' ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
       }))
     };
   } catch (e) {

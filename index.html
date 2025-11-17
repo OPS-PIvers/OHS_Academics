@@ -143,7 +143,7 @@
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-gray-700">Historical Snapshot Management</h2>
-                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create new snapshot">Create Snapshot Now</button>
+                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create Snapshot Now">Create Snapshot Now</button>
                     </div>
                     <p class="text-sm text-gray-600 mb-4">Snapshots are automatically captured every Monday at 11:00 AM before the Tuesday data updates. View trends and compare data week-over-week.</p>
                     <!-- Inline notification message div -->
@@ -783,7 +783,7 @@
                     labels: labels,
                     datasets: [{
                         label: 'Average Unserved Detention',
-                        data: historicalData.map(d => d.avgUnservedDetention.toFixed(2)),
+                        data: historicalData.map(d => typeof d.avgUnservedDetention === 'number' ? d.avgUnservedDetention.toFixed(2) : 0),
                         backgroundColor: chartColors.yellow
                     }]
                 },
@@ -826,6 +826,10 @@
             });
         }
 
+        // Constants for maintainability
+        const SUCCESS_MESSAGE_TIMEOUT = 5000; // Auto-hide timeout for success messages
+        const CONCERNING_METRICS = ['Ineligible', 'Failing', 'Detention', 'Absences', 'Skipped', 'Truancy'];
+
         // Helper function to show inline messages instead of alerts
         function showMessage(elementId, message, type = 'info') {
             const messageDiv = document.getElementById(elementId);
@@ -841,12 +845,61 @@
 
             messageDiv.textContent = message;
 
-            // Auto-hide success messages after 5 seconds
+            // Auto-hide success messages after configured timeout
             if (type === 'success') {
                 setTimeout(() => {
                     messageDiv.classList.add('hidden');
-                }, 5000);
+                }, SUCCESS_MESSAGE_TIMEOUT);
             }
+        }
+
+        // Helper function to determine if a metric change is concerning
+        function isMetricConcerning(metricName) {
+            return CONCERNING_METRICS.some(keyword => metricName.includes(keyword));
+        }
+
+        // Helper function to get change indicators
+        function getMetricChangeIndicator(metricName, delta) {
+            const isConcerning = isMetricConcerning(metricName);
+            let rowColor, deltaColor, arrow, textIndicator;
+
+            if (delta > 0) {
+                if (isConcerning) {
+                    rowColor = 'bg-red-50';
+                    deltaColor = 'text-red-700 font-semibold';
+                    arrow = '↑';
+                    textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
+                } else {
+                    rowColor = 'bg-green-50';
+                    deltaColor = 'text-green-700 font-semibold';
+                    arrow = '↑';
+                    textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
+                }
+            } else if (delta < 0) {
+                if (isConcerning) {
+                    rowColor = 'bg-green-50';
+                    deltaColor = 'text-green-700 font-semibold';
+                    arrow = '↓';
+                    textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
+                } else {
+                    rowColor = 'bg-red-50';
+                    deltaColor = 'text-red-700 font-semibold';
+                    arrow = '↓';
+                    textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
+                }
+            } else {
+                rowColor = 'bg-white';
+                deltaColor = 'text-gray-600';
+                arrow = '';
+                textIndicator = '';
+            }
+
+            return { rowColor, deltaColor, arrow, textIndicator };
+        }
+
+        // Helper function to format error messages
+        function formatErrorMessage(error) {
+            return error && error.message ? error.message : String(error);
         }
 
         // Setup event listeners for historical tab
@@ -873,7 +926,7 @@
                         btn.removeAttribute('aria-busy');
                         btn.removeAttribute('aria-disabled');
                         btn.textContent = 'Create Snapshot Now';
-                        showMessage('snapshot-message', 'Error creating snapshot: ' + error, 'error');
+                        showMessage('snapshot-message', 'Error creating snapshot: ' + formatErrorMessage(error), 'error');
                     })
                     .createWeeklySnapshot();
             });
@@ -902,15 +955,19 @@
                         displayComparisonResults(comparison);
                     })
                     .withFailureHandler(error => {
-                        document.getElementById('comparison-results').innerHTML = '<p class="text-red-500">Error comparing snapshots: ' + error + '</p>';
+                        document.getElementById('comparison-results').innerHTML = '<p class="text-red-500">Error comparing snapshots: ' + formatErrorMessage(error) + '</p>';
                     })
                     .compareSnapshots(new Date(parseInt(date1)), new Date(parseInt(date2)));
             });
         });
 
         function displayComparisonResults(comparison) {
-            if (!comparison || comparison.error) {
-                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">${comparison.error || 'No data available for comparison.'}</p>`;
+            if (!comparison) {
+                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">No data available for comparison.</p>`;
+                return;
+            }
+            if (comparison.error) {
+                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">${comparison.error}</p>`;
                 return;
             }
 
@@ -934,53 +991,22 @@
                     // Handle 'N/A' for percent change when baseline is zero
                     const percentChange = change.percentChange === 'N/A' ? 'N/A' : parseFloat(change.percentChange);
 
-                    let rowColor = 'bg-white';
-                    let deltaColor = 'text-gray-600';
-                    let arrow = '';
-                    let textIndicator = '';
-
-                    if (delta > 0) {
-                        // Check if increase is concerning based on metric
-                        if (change.metric.includes('Ineligible') || change.metric.includes('Failing') ||
-                            change.metric.includes('Detention') || change.metric.includes('Absences') ||
-                            change.metric.includes('Skipped') || change.metric.includes('Truancy')) {
-                            rowColor = 'bg-red-50';
-                            deltaColor = 'text-red-700 font-semibold';
-                            arrow = '↑';
-                            textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
-                        } else {
-                            rowColor = 'bg-green-50';
-                            deltaColor = 'text-green-700 font-semibold';
-                            arrow = '↑';
-                            textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
-                        }
-                    } else if (delta < 0) {
-                        // Check if decrease is good based on metric
-                        if (change.metric.includes('Ineligible') || change.metric.includes('Failing') ||
-                            change.metric.includes('Detention') || change.metric.includes('Absences') ||
-                            change.metric.includes('Skipped') || change.metric.includes('Truancy')) {
-                            rowColor = 'bg-green-50';
-                            deltaColor = 'text-green-700 font-semibold';
-                            arrow = '↓';
-                            textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
-                        } else {
-                            rowColor = 'bg-red-50';
-                            deltaColor = 'text-red-700 font-semibold';
-                            arrow = '↓';
-                            textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
-                        }
-                    }
+                    // Use helper function to determine styling
+                    const { rowColor, deltaColor, arrow, textIndicator } = getMetricChangeIndicator(change.metric, delta);
 
                     // Format percent change display
                     const percentDisplay = percentChange === 'N/A'
                         ? 'N/A'
                         : `${percentChange > 0 ? '+' : ''}${percentChange}%`;
 
+                    // Improved aria-label for screen readers
+                    const ariaLabel = `Change: ${delta > 0 ? 'Increased' : 'Decreased'} by ${Math.abs(delta)}`;
+
                     html += `<tr class="${rowColor}">
                         <td class="border border-gray-300 px-4 py-2">${textIndicator}${change.metric}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">${change.oldValue}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">${change.newValue}</td>
-                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}" aria-label="${arrow === '↑' ? 'Increased by' : 'Decreased by'} ${Math.abs(delta)}">${arrow} ${delta > 0 ? '+' : ''}${change.delta}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}" aria-label="${ariaLabel}">${arrow} ${delta > 0 ? '+' : ''}${change.delta}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}">${percentDisplay}</td>
                     </tr>`;
                 });
