@@ -207,4 +207,3 @@ For feature requests or bugs, contact your system administrator.
 
 **Version**: 1.0
 **Last Updated**: November 2025
-**Created By**: Claude (AI Assistant)

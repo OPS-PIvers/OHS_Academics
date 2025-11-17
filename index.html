@@ -222,13 +222,13 @@
 
             const switchTab = (activeTab, activeContent) => {
                 [tabStudents, tabVisuals, tabHistorical].forEach(tab => {
-                    if (tab === activeTab) {
-                        tab.classList.add('text-white', 'border-white');
-                        tab.classList.remove('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                    } else {
-                        tab.classList.add('text-gray-400', 'border-transparent', 'hover:text-white', 'hover:border-gray-300');
-                        tab.classList.remove('text-white', 'border-white');
-                    }
+                    const isActive = tab === activeTab;
+                    tab.classList.toggle('text-white', isActive);
+                    tab.classList.toggle('border-white', isActive);
+                    tab.classList.toggle('text-gray-400', !isActive);
+                    tab.classList.toggle('border-transparent', !isActive);
+                    tab.classList.toggle('hover:text-white', !isActive);
+                    tab.classList.toggle('hover:border-gray-300', !isActive);
                 });
                 [contentStudents, contentVisuals, contentHistorical].forEach(content => {
                     content.classList.toggle('hidden', content !== activeContent);
@@ -758,7 +758,7 @@
                     labels: labels,
                     datasets: [{
                         label: 'Average Absences',
-                        data: historicalData.map(d => typeof d.avgAbsences === 'number' ? d.avgAbsences.toFixed(2) : 0),
+                        data: historicalData.map(d => typeof d.avgAbsences === 'number' ? d.avgAbsences : 0),
                         backgroundColor: chartColors.blue,
                         borderColor: chartColors.blue,
                         borderWidth: 2,
@@ -783,7 +783,7 @@
                     labels: labels,
                     datasets: [{
                         label: 'Average Unserved Detention',
-                        data: historicalData.map(d => typeof d.avgUnservedDetention === 'number' ? d.avgUnservedDetention.toFixed(2) : 0),
+                        data: historicalData.map(d => typeof d.avgUnservedDetention === 'number' ? d.avgUnservedDetention : 0),
                         backgroundColor: chartColors.yellow
                     }]
                 },
@@ -797,10 +797,7 @@
                 }
             });
 
-            // Ineligibility Rate Chart with division by zero protection
-            const ineligibilityRates = historicalData.map(d => {
-                return d.totalStudents > 0 ? ((d.studentsWith2PlusF / d.totalStudents) * 100).toFixed(1) : 0;
-            });
+            // Ineligibility Rate Chart - uses pre-calculated backend value
             if (charts.historicalIneligibility) charts.historicalIneligibility.destroy();
             charts.historicalIneligibility = new Chart(document.getElementById('historical-ineligibility-chart'), {
                 type: 'line',
@@ -808,7 +805,7 @@
                     labels: labels,
                     datasets: [{
                         label: 'Ineligibility Rate',
-                        data: ineligibilityRates,
+                        data: historicalData.map(d => typeof d.ineligibilityRate === 'number' ? d.ineligibilityRate : 0),
                         backgroundColor: chartColors.red,
                         borderColor: chartColors.red,
                         borderWidth: 2,
@@ -1000,7 +997,9 @@
                         : `${percentChange > 0 ? '+' : ''}${percentChange}%`;
 
                     // Improved aria-label for screen readers
-                    const ariaLabel = `Change: ${delta > 0 ? 'Increased' : 'Decreased'} by ${Math.abs(delta)}`;
+                    const ariaLabel = delta === 0
+                        ? 'No change'
+                        : `Change: ${delta > 0 ? 'Increased' : 'Decreased'} by ${Math.abs(delta)}`;
 
                     html += `<tr class="${rowColor}">
                         <td class="border border-gray-300 px-4 py-2">${textIndicator}${change.metric}</td>

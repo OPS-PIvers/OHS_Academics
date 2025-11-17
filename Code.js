@@ -34,7 +34,7 @@ const SNAPSHOT_METRICS_CONFIG = [
   { key: 'spartanHourTotalRequests', header: 'Spartan Hour Total Requests', index: 16, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0) },
   { key: 'spartanHourSkippedRequests', header: 'Spartan Hour Skipped Requests', index: 17, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0) },
   { key: 'spartanHourHighPriorityRequests', header: 'Spartan Hour High Priority Requests', index: 18, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0) },
-  { key: 'studentsWithClubParticipation', header: 'Students with Club Participation', index: 19, type: 'number', aggregator: (data) => data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length },
+  { key: 'studentsWithClubParticipation', header: 'Students with Club Participation', index: 19, type: 'number', aggregator: (data) => data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended?.trim() !== '')).length },
   { key: 'studentsInActivities', header: 'Students in Activities', index: 20, type: 'number', aggregator: (data) => data.filter(s => s.activity && s.activity.trim() !== '').length },
   { key: 'studentsWithTier2', header: 'Students with Tier 2', index: 21, type: 'number', aggregator: (data) => data.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '').length },
   { key: 'studentsWithSpecialEd', header: 'Students with Special Ed', index: 22, type: 'number', aggregator: (data) => data.filter(s => s.caseManager && s.caseManager.trim() !== '').length }
@@ -74,14 +74,14 @@ function createWeeklySnapshot() {
 
     // First pass: calculate metrics that don't depend on other metrics
     SNAPSHOT_METRICS_CONFIG.slice(1).forEach(config => {
-      if (config.aggregator && !config.aggregator.toString().includes('metrics')) {
+      if (config.aggregator && config.aggregator.length === 1) {
         metrics[config.key] = config.aggregator(studentData);
       }
     });
 
     // Second pass: calculate metrics that depend on other metrics (like rates and averages)
     SNAPSHOT_METRICS_CONFIG.slice(1).forEach(config => {
-      if (config.aggregator && config.aggregator.toString().includes('metrics')) {
+      if (config.aggregator && config.aggregator.length > 1) {
         metrics[config.key] = config.aggregator(studentData, metrics);
       }
     });
@@ -239,7 +239,7 @@ function compareSnapshots(date1, date2) {
       if (value1 === 0 && value2 === 0) {
         percentChange = 0; // No change: both are zero
       } else if (value1 === 0 && value2 !== 0) {
-        percentChange = 'N/A'; // Can't calculate percent change from zero baseline
+        percentChange = 'N/A (from zero)'; // Percent change from zero baseline is undefined/infinite
       } else {
         percentChange = ((delta / value1) * 100).toFixed(1);
       }
