@@ -754,7 +754,7 @@
                     labels: labels,
                     datasets: [{
                         label: 'Average Absences',
-                        data: historicalData.map(d => d.avgTotalAbsences.toFixed(2)),
+                        data: historicalData.map(d => typeof d.avgAbsences === 'number' ? d.avgAbsences.toFixed(2) : 0),
                         backgroundColor: chartColors.blue,
                         borderColor: chartColors.blue,
                         borderWidth: 2,
@@ -871,57 +871,89 @@
         });
 
         function displayComparisonResults(comparison) {
-            if (!comparison || !comparison.changedStudents) {
-                document.getElementById('comparison-results').innerHTML = '<p class="text-gray-500">No data available for comparison.</p>';
+            if (!comparison || comparison.error) {
+                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">${comparison.error || 'No data available for comparison.'}</p>`;
                 return;
             }
 
-            const changedCount = comparison.changedStudents.length;
+            const changedCount = comparison.changes ? comparison.changes.length : 0;
             let html = `
                 <div class="bg-gray-50 p-4 rounded-lg mb-4">
-                    <h3 class="text-lg font-semibold mb-2">Comparison Summary</h3>
+                    <h3 class="text-lg font-semibold mb-2">Global Metrics Comparison</h3>
                     <div class="grid grid-cols-2 gap-4">
                         <div><strong>From:</strong> ${comparison.date1}</div>
                         <div><strong>To:</strong> ${comparison.date2}</div>
-                        <div><strong>Students (From):</strong> ${comparison.totalStudentsDate1}</div>
-                        <div><strong>Students (To):</strong> ${comparison.totalStudentsDate2}</div>
-                        <div class="col-span-2"><strong>Students with Changes:</strong> ${changedCount}</div>
+                        <div class="col-span-2"><strong>Metrics that Changed:</strong> ${changedCount}</div>
                     </div>
                 </div>
             `;
 
             if (changedCount > 0) {
-                html += '<div class="mt-4"><h4 class="font-semibold mb-2">Detailed Changes:</h4><div class="max-h-96 overflow-y-auto">';
+                html += '<div class="mt-4"><h4 class="font-semibold mb-2">Changes in Global Metrics:</h4><div class="max-h-96 overflow-y-auto"><table class="w-full border-collapse border border-gray-300"><thead class="bg-gray-100"><tr><th class="border border-gray-300 px-4 py-2 text-left">Metric</th><th class="border border-gray-300 px-4 py-2 text-center">Week 1</th><th class="border border-gray-300 px-4 py-2 text-center">Week 2</th><th class="border border-gray-300 px-4 py-2 text-center">Change</th><th class="border border-gray-300 px-4 py-2 text-center">% Change</th></tr></thead><tbody>';
 
-                comparison.changedStudents.forEach(student => {
-                    html += `<div class="border-l-4 border-blue-500 bg-white p-3 mb-3 shadow-sm">
-                        <p class="font-medium text-gray-800">${student.studentName}</p>
-                        <ul class="mt-2 text-sm space-y-1">`;
+                comparison.changes.forEach(change => {
+                    const delta = parseFloat(change.delta);
+                    const percentChange = parseFloat(change.percentChange);
 
-                    Object.entries(student.changes).forEach(([metric, change]) => {
-                        const metricLabels = {
-                            'numFGrades': 'Failing Grades',
-                            'unservedDetention': 'Unserved Detention',
-                            'totalAbsences': 'Total Absences',
-                            'consecutiveWeeks': 'Consecutive Weeks on D/F List',
-                            'spartanHourTotalRequests': 'Spartan Hour Requests',
-                            'spartanHourSkippedRequests': 'Skipped Spartan Hour',
-                            'failingClasses': 'Failing Classes'
-                        };
+                    let rowColor = 'bg-white';
+                    let deltaColor = 'text-gray-600';
+                    let arrow = '';
 
-                        const label = metricLabels[metric] || metric;
-                        const deltaText = change.delta !== null ? ` (${change.delta > 0 ? '+' : ''}${change.delta})` : '';
-                        const color = change.delta > 0 ? 'text-red-600' : (change.delta < 0 ? 'text-green-600' : 'text-gray-600');
+                    if (delta > 0) {
+                        // Check if increase is concerning based on metric
+                        if (change.metric.includes('Ineligible') || change.metric.includes('Failing') ||
+                            change.metric.includes('Detention') || change.metric.includes('Absences') ||
+                            change.metric.includes('Skipped') || change.metric.includes('Truancy')) {
+                            rowColor = 'bg-red-50';
+                            deltaColor = 'text-red-700 font-semibold';
+                            arrow = '↑';
+                        } else {
+                            rowColor = 'bg-green-50';
+                            deltaColor = 'text-green-700 font-semibold';
+                            arrow = '↑';
+                        }
+                    } else if (delta < 0) {
+                        // Check if decrease is good based on metric
+                        if (change.metric.includes('Ineligible') || change.metric.includes('Failing') ||
+                            change.metric.includes('Detention') || change.metric.includes('Absences') ||
+                            change.metric.includes('Skipped') || change.metric.includes('Truancy')) {
+                            rowColor = 'bg-green-50';
+                            deltaColor = 'text-green-700 font-semibold';
+                            arrow = '↓';
+                        } else {
+                            rowColor = 'bg-red-50';
+                            deltaColor = 'text-red-700 font-semibold';
+                            arrow = '↓';
+                        }
+                    }
 
-                        html += `<li class="${color}"><strong>${label}:</strong> ${change.old} → ${change.new}${deltaText}</li>`;
-                    });
-
-                    html += '</ul></div>';
+                    html += `<tr class="${rowColor}">
+                        <td class="border border-gray-300 px-4 py-2">${change.metric}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center">${change.oldValue}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center">${change.newValue}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}">${arrow} ${delta > 0 ? '+' : ''}${change.delta}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}">${percentChange > 0 ? '+' : ''}${change.percentChange}%</td>
+                    </tr>`;
                 });
 
-                html += '</div></div>';
+                html += '</tbody></table></div></div>';
             } else {
                 html += '<p class="text-gray-600 mt-4">No significant changes detected between these snapshots.</p>';
+            }
+
+            // Add full metrics table
+            if (comparison.allMetrics && comparison.allMetrics.length > 0) {
+                html += '<div class="mt-6"><h4 class="font-semibold mb-2">All Metrics (Side-by-Side):</h4><div class="max-h-96 overflow-y-auto"><table class="w-full border-collapse border border-gray-300 text-sm"><thead class="bg-gray-100"><tr><th class="border border-gray-300 px-3 py-2 text-left">Metric</th><th class="border border-gray-300 px-3 py-2 text-center">' + comparison.date1 + '</th><th class="border border-gray-300 px-3 py-2 text-center">' + comparison.date2 + '</th></tr></thead><tbody>';
+
+                comparison.allMetrics.forEach(metric => {
+                    html += `<tr class="bg-white hover:bg-gray-50">
+                        <td class="border border-gray-300 px-3 py-2">${metric.metric}</td>
+                        <td class="border border-gray-300 px-3 py-2 text-center">${metric.value1}</td>
+                        <td class="border border-gray-300 px-3 py-2 text-center">${metric.value2}</td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div></div>';
             }
 
             document.getElementById('comparison-results').innerHTML = html;

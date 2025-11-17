@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Historical Snapshot System automatically captures weekly snapshots of student data every Monday at 11:00 AM CST, preserving historical data for week-over-week comparison and year-long trend analysis.
+The Historical Snapshot System automatically captures weekly snapshots of **GLOBAL AGGREGATE METRICS** every Monday at 11:00 AM CST, preserving historical trends for week-over-week comparison and year-long analysis.
+
+**IMPORTANT**: This system captures ONLY aggregate/summary statistics (totals, averages, counts) - **NO individual student data** is stored in snapshots. This ensures privacy while enabling comprehensive trend analysis.
 
 ## Features
 
@@ -49,49 +51,76 @@ Once you have multiple snapshots (recommended: at least 2-3 weeks of data):
 2. View the summary cards showing:
    - Total number of snapshots
    - Latest snapshot date
-   - Number of students tracked
+   - Total student count from latest snapshot
 
 3. Scroll down to view trend charts:
    - **Failing Grades Over Time**: Shows students with 2+ F grades (ineligible) vs 1 F grade (at-risk)
-   - **Average Absences**: Track attendance trends
-   - **Unserved Detention**: Monitor detention completion
+   - **Average Absences**: Track attendance trends school-wide
+   - **Unserved Detention**: Monitor average detention hours
    - **Ineligibility Rate**: See the percentage of ineligible students over time
 
 ### Comparing Weeks
 
-To compare data between two specific weeks:
+To compare **global metrics** between two specific weeks:
 
 1. In the "Week-Over-Week Comparison" section:
    - Select the first week from the dropdown (older date)
    - Select the second week from the dropdown (newer date)
 2. Click **Compare Snapshots**
 3. Review the comparison results showing:
-   - Summary statistics for both weeks
-   - List of students with changes
-   - Delta values (changes) for each metric
-   - Color coding: Red (increase), Green (decrease), Gray (no numeric change)
+   - Changes in aggregate metrics (totals, averages, rates)
+   - Delta values (numeric change) for each metric
+   - Percentage change for each metric
+   - Color coding:
+     - **Green rows**: Improvement (e.g., fewer failures, less detention)
+     - **Red rows**: Decline (e.g., more failures, more absences)
+   - Side-by-side table of all metrics for both weeks
 
 ### Understanding the Data
 
-**Metrics Tracked:**
-- Failing Grades (number of F grades)
-- Unserved Detention (hours)
-- Total Absences (periods)
-- Consecutive Weeks on D/F List
-- Spartan Hour Requests & Skipped Sessions
-- Failing Classes (specific courses)
+**23 Aggregate Metrics Tracked (NO individual student data):**
+
+**Student Counts:**
+- Total Students
+- Ineligible Students
+- Students with F Grades (any Fs)
+- Students with 1 F (at-risk)
+- Students with 2+ F (ineligible)
+- Students with Detention
+- Students in Activities
+- Students with Club Participation
+- Students with Tier 2 Interventions
+- Students with Special Education
+
+**Academic Performance:**
+- Ineligibility Rate (%)
+- Total F Grades (across all students)
+- Average Unserved Detention (hours)
+
+**Attendance:**
+- Total Absences (all types combined)
+- Average Absences per student
+- Unexcused Absences
+- Truancy Absences
+- Medical Absences
+- Illness Absences
+
+**Spartan Hour:**
+- Total Requests
+- Skipped Requests
+- High Priority Requests
 
 **Color Coding in Comparisons:**
-- 🔴 Red: Metric increased (potentially concerning)
-- 🟢 Green: Metric decreased (improvement)
-- ⚫ Gray: Non-numeric change or no change
+- 🟢 Green Row: Improvement (fewer failures, less detention, fewer absences)
+- 🔴 Red Row: Decline (more failures, more detention, more absences)
 
 ## Data Storage
 
 - **Sheet Name**: `Historical Snapshots`
 - **Location**: Automatically created in your spreadsheet on first snapshot
+- **Data Format**: One row per snapshot, 23 aggregate metrics per row
 - **Data Retention**: All snapshots are preserved indefinitely
-- **Columns**: 31 columns including timestamp and all student metrics
+- **Privacy**: NO individual student names, IDs, or personally identifiable information
 
 ## Trigger Management
 
@@ -143,9 +172,9 @@ To stop automatic snapshots:
 
 **Possible causes**:
 1. Comparing identical snapshots (same date)
-2. No student metrics actually changed between weeks
+2. No global metrics actually changed between weeks (rare - usually at least student counts change)
 
-**Solution**: Select different dates with at least a few days between them
+**Solution**: Select different dates with at least a week between them
 
 ## Best Practices
 
@@ -157,10 +186,13 @@ To stop automatic snapshots:
 
 ## Data Privacy
 
-- Snapshots contain student PII (names, IDs)
-- Access is controlled by spreadsheet permissions
+**Snapshots are Privacy-Friendly:**
+- **NO individual student data** is stored (no names, IDs, or PII)
+- Contains ONLY aggregate metrics (counts, averages, totals)
+- Safe to share with administrators for trend analysis
+- Complies with student privacy regulations (FERPA)
+- Access still controlled by spreadsheet permissions
 - Follow your school's data retention policies
-- Consider deleting old snapshots after the school year ends
 
 ## Support
 

@@ -7,65 +7,119 @@
  */
 
 // ===============================================================
-// HISTORICAL SNAPSHOT SYSTEM
+// HISTORICAL SNAPSHOT SYSTEM - GLOBAL AGGREGATE DATA ONLY
 // ===============================================================
 
 /**
- * Creates a snapshot of the current state of all student data.
+ * Creates a snapshot of GLOBAL AGGREGATE METRICS only (no individual student data).
  * This function should be triggered every Monday to preserve data before Tuesday updates.
  * @returns {boolean} True if snapshot was created successfully, false otherwise.
  */
 function createWeeklySnapshot() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
-
-    if (!hubSheet) {
-      Logger.log("Error: Hub sheet not found.");
-      return false;
-    }
 
     // Get or create the Historical Snapshots sheet
     let snapshotSheet = ss.getSheetByName("Historical Snapshots");
     if (!snapshotSheet) {
       snapshotSheet = ss.insertSheet("Historical Snapshots");
 
-      // Add headers
+      // Add headers for AGGREGATE METRICS ONLY
       const headers = [
-        "Snapshot Date", "Student Name", "Grade", "ID", "Case Manager", "Activity",
-        "Unserved Detention", "Total Detention", "Discipline Detention", "Attendance Detention",
-        "Is Failing", "Failing Classes", "Num F Grades", "Unexcused Absences", "Unexcused Tardies",
-        "Medical Absences", "Illness Absences", "Truancy Absences", "Total Absences",
-        "Total Absence Days", "Attendance Letters", "Dishonesty Referrals", "Tier 2 Interventions",
-        "Tier 2 Instructor", "Spartan Hour Total Requests", "Spartan Hour Skipped Requests",
-        "Spartan Hour High Priority Reqs", "Total Club Meetings Attended", "Clubs Attended",
-        "Consecutive Weeks on D/F List"
+        "Snapshot Date",
+        "Total Students",
+        "Ineligible Students",
+        "Ineligibility Rate (%)",
+        "Students with F Grades",
+        "Students with 1 F",
+        "Students with 2+ F",
+        "Total F Grades",
+        "Avg Unserved Detention",
+        "Students with Detention",
+        "Total Absences",
+        "Avg Absences",
+        "Unexcused Absences",
+        "Truancy Absences",
+        "Medical Absences",
+        "Illness Absences",
+        "Spartan Hour Total Requests",
+        "Spartan Hour Skipped Requests",
+        "Spartan Hour High Priority Requests",
+        "Students with Club Participation",
+        "Students in Activities",
+        "Students with Tier 2",
+        "Students with Special Ed"
       ];
       snapshotSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       snapshotSheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
       snapshotSheet.setFrozenRows(1);
     }
 
-    // Get current data from hub sheet
-    const lastRow = hubSheet.getLastRow();
-    if (lastRow < 2) {
-      Logger.log("No data to snapshot.");
+    // Get current student data to calculate aggregates
+    const studentData = getStudentData();
+
+    if (!studentData || studentData.length === 0) {
+      Logger.log("No student data to snapshot.");
       return false;
     }
 
-    const dataRange = hubSheet.getRange(2, 1, lastRow - 1, 30); // Columns A-AD
-    const data = dataRange.getValues();
-
-    // Add snapshot date to each row
+    // Calculate aggregate metrics
     const snapshotDate = new Date();
-    const snapshotData = data.map(row => [snapshotDate, ...row]);
+    const totalStudents = studentData.length;
+    const ineligibleStudents = studentData.filter(s => s.ineligible).length;
+    const studentsWithFGrades = studentData.filter(s => s.numFGrades > 0).length;
+    const studentsWith1F = studentData.filter(s => s.numFGrades === 1).length;
+    const studentsWith2PlusF = studentData.filter(s => s.numFGrades >= 2).length;
+    const totalFGrades = studentData.reduce((sum, s) => sum + s.numFGrades, 0);
+    const avgUnservedDetention = studentData.reduce((sum, s) => sum + s.unservedDetention, 0) / totalStudents;
+    const studentsWithDetention = studentData.filter(s => s.unservedDetention > 0).length;
+    const totalAbsences = studentData.reduce((sum, s) => sum + s.totalAbsences, 0);
+    const avgAbsences = totalAbsences / totalStudents;
+    const unexcusedAbsences = studentData.reduce((sum, s) => sum + s.unexcusedAbsences, 0);
+    const truancyAbsences = studentData.reduce((sum, s) => sum + s.truancyAbsences, 0);
+    const medicalAbsences = studentData.reduce((sum, s) => sum + s.medicalAbsences, 0);
+    const illnessAbsences = studentData.reduce((sum, s) => sum + s.illnessAbsences, 0);
+    const spartanHourTotalRequests = studentData.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0);
+    const spartanHourSkippedRequests = studentData.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0);
+    const spartanHourHighPriorityRequests = studentData.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0);
+    const studentsWithClubParticipation = studentData.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length;
+    const studentsInActivities = studentData.filter(s => s.activity && s.activity.trim() !== '').length;
+    const studentsWithTier2 = studentData.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '').length;
+    const studentsWithSpecialEd = studentData.filter(s => s.caseManager && s.caseManager.trim() !== '').length;
+    const ineligibilityRate = (ineligibleStudents / totalStudents) * 100;
+
+    // Create snapshot row (AGGREGATE DATA ONLY - NO INDIVIDUAL STUDENTS)
+    const snapshotRow = [
+      snapshotDate,
+      totalStudents,
+      ineligibleStudents,
+      ineligibilityRate,
+      studentsWithFGrades,
+      studentsWith1F,
+      studentsWith2PlusF,
+      totalFGrades,
+      avgUnservedDetention,
+      studentsWithDetention,
+      totalAbsences,
+      avgAbsences,
+      unexcusedAbsences,
+      truancyAbsences,
+      medicalAbsences,
+      illnessAbsences,
+      spartanHourTotalRequests,
+      spartanHourSkippedRequests,
+      spartanHourHighPriorityRequests,
+      studentsWithClubParticipation,
+      studentsInActivities,
+      studentsWithTier2,
+      studentsWithSpecialEd
+    ];
 
     // Append to snapshot sheet
     const nextRow = snapshotSheet.getLastRow() + 1;
-    snapshotSheet.getRange(nextRow, 1, snapshotData.length, snapshotData[0].length)
-      .setValues(snapshotData);
+    snapshotSheet.getRange(nextRow, 1, 1, snapshotRow.length).setValues([snapshotRow]);
 
-    Logger.log(`Successfully created snapshot with ${snapshotData.length} students on ${snapshotDate}`);
+    Logger.log(`Successfully created global snapshot on ${snapshotDate}: ${totalStudents} students, ${ineligibilityRate.toFixed(1)}% ineligible`);
     return true;
 
   } catch (e) {
@@ -99,10 +153,10 @@ function setupWeeklySnapshotTrigger() {
 }
 
 /**
- * Gets all unique snapshot dates from the Historical Snapshots sheet.
- * @returns {Date[]} Array of snapshot dates, sorted newest first.
+ * Gets all snapshots as aggregate data.
+ * @returns {Object[]} Array of snapshot objects with aggregate metrics.
  */
-function getSnapshotDates() {
+function getAllSnapshots() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const snapshotSheet = ss.getSheetByName("Historical Snapshots");
@@ -111,72 +165,60 @@ function getSnapshotDates() {
       return [];
     }
 
-    const dateColumn = snapshotSheet.getRange(2, 1, snapshotSheet.getLastRow() - 1, 1).getValues();
-    const uniqueDates = [...new Set(dateColumn.map(row => row[0].getTime()))]
-      .map(timestamp => new Date(timestamp))
-      .sort((a, b) => b - a); // Sort newest first
+    const numRows = snapshotSheet.getLastRow() - 1;
+    const numCols = snapshotSheet.getLastColumn();
+    const data = snapshotSheet.getRange(2, 1, numRows, numCols).getValues();
 
-    return uniqueDates;
+    // Map each row to an object with aggregate metrics
+    return data.map(row => ({
+      date: row[0],
+      formattedDate: Utilities.formatDate(row[0], Session.getScriptTimeZone(), "MMM d, yyyy"),
+      totalStudents: row[1],
+      ineligibleStudents: row[2],
+      ineligibilityRate: row[3],
+      studentsWithFGrades: row[4],
+      studentsWith1F: row[5],
+      studentsWith2PlusF: row[6],
+      totalFGrades: row[7],
+      avgUnservedDetention: row[8],
+      studentsWithDetention: row[9],
+      totalAbsences: row[10],
+      avgAbsences: row[11],
+      unexcusedAbsences: row[12],
+      truancyAbsences: row[13],
+      medicalAbsences: row[14],
+      illnessAbsences: row[15],
+      spartanHourTotalRequests: row[16],
+      spartanHourSkippedRequests: row[17],
+      spartanHourHighPriorityRequests: row[18],
+      studentsWithClubParticipation: row[19],
+      studentsInActivities: row[20],
+      studentsWithTier2: row[21],
+      studentsWithSpecialEd: row[22]
+    }));
   } catch (e) {
-    Logger.log(`Error getting snapshot dates: ${e.message}`);
+    Logger.log(`Error getting snapshots: ${e.message}`);
     return [];
   }
 }
 
 /**
- * Retrieves snapshot data for a specific date.
+ * Gets a single snapshot by date.
  * @param {Date} snapshotDate - The date of the snapshot to retrieve.
- * @returns {Object[]} Array of student data objects for that snapshot.
+ * @returns {Object} Snapshot object with aggregate metrics.
  */
-function getSnapshotData(snapshotDate) {
+function getSnapshotByDate(snapshotDate) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const snapshotSheet = ss.getSheetByName("Historical Snapshots");
+    const snapshots = getAllSnapshots();
+    const targetTime = new Date(snapshotDate).setHours(0, 0, 0, 0);
 
-    if (!snapshotSheet || snapshotSheet.getLastRow() < 2) {
-      return [];
-    }
-
-    const allData = snapshotSheet.getRange(2, 1, snapshotSheet.getLastRow() - 1, 31).getValues();
-    const targetDate = new Date(snapshotDate);
-    targetDate.setHours(0, 0, 0, 0);
-
-    const headers = [
-      "snapshotDate", "ineligible", "studentName", "grade", "id", "caseManager", "activity",
-      "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
-      "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
-      "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
-      "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
-      "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests",
-      "spartanHourReqsHighPriority", "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
-    ];
-
-    // Filter data for the specified date
-    const filteredData = allData.filter(row => {
-      const rowDate = new Date(row[0]);
-      rowDate.setHours(0, 0, 0, 0);
-      return rowDate.getTime() === targetDate.getTime();
-    });
-
-    // Convert to objects
-    return filteredData.map(row => {
-      let obj = {};
-      headers.forEach((key, i) => {
-        let value = row[i];
-        if (['ineligible', 'isFailing'].includes(key)) {
-          obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
-        } else if (['grade', 'id', 'unservedDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
-          const parsedValue = parseInt(value, 10);
-          obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
-        } else {
-          obj[key] = value;
-        }
-      });
-      return obj;
-    });
+    return snapshots.find(snapshot => {
+      const snapshotTime = new Date(snapshot.date).setHours(0, 0, 0, 0);
+      return snapshotTime === targetTime;
+    }) || null;
   } catch (e) {
-    Logger.log(`Error getting snapshot data: ${e.message}`);
-    return [];
+    Logger.log(`Error getting snapshot by date: ${e.message}`);
+    return null;
   }
 }
 
@@ -186,12 +228,12 @@ function getSnapshotData(snapshotDate) {
  */
 function getSnapshotList() {
   try {
-    const dates = getSnapshotDates();
-    return dates.map(date => ({
-      date: date,
-      formattedDate: Utilities.formatDate(date, Session.getScriptTimeZone(), "MMM d, yyyy"),
-      timestamp: date.getTime()
-    }));
+    const snapshots = getAllSnapshots();
+    return snapshots.map(snapshot => ({
+      date: snapshot.date,
+      formattedDate: snapshot.formattedDate,
+      timestamp: snapshot.date.getTime()
+    })).reverse(); // Newest first
   } catch (e) {
     Logger.log(`Error getting snapshot list: ${e.message}`);
     return [];
@@ -199,92 +241,90 @@ function getSnapshotList() {
 }
 
 /**
- * Compares two snapshots and returns the differences.
+ * Compares two snapshots and returns the global metric differences.
  * @param {Date} date1 - First snapshot date (older).
  * @param {Date} date2 - Second snapshot date (newer).
- * @returns {Object} Object containing comparison data.
+ * @returns {Object} Object containing comparison of aggregate metrics.
  */
 function compareSnapshots(date1, date2) {
   try {
-    const snapshot1 = getSnapshotData(date1);
-    const snapshot2 = getSnapshotData(date2);
+    const snapshot1 = getSnapshotByDate(date1);
+    const snapshot2 = getSnapshotByDate(date2);
 
-    // Create maps for easy lookup
-    const map1 = new Map(snapshot1.map(s => [s.studentName, s]));
-    const map2 = new Map(snapshot2.map(s => [s.studentName, s]));
-
-    const changes = [];
-
-    // Compare students present in both snapshots
-    for (const [studentName, data2] of map2) {
-      const data1 = map1.get(studentName);
-      if (data1) {
-        const studentChanges = {
-          studentName: studentName,
-          changes: {}
-        };
-
-        // Compare key metrics
-        const metricsToCompare = [
-          'numFGrades', 'unservedDetention', 'totalAbsences', 'consecutiveWeeks',
-          'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'failingClasses'
-        ];
-
-        metricsToCompare.forEach(metric => {
-          if (data1[metric] !== data2[metric]) {
-            studentChanges.changes[metric] = {
-              old: data1[metric],
-              new: data2[metric],
-              delta: (typeof data1[metric] === 'number' && typeof data2[metric] === 'number')
-                ? data2[metric] - data1[metric]
-                : null
-            };
-          }
-        });
-
-        if (Object.keys(studentChanges.changes).length > 0) {
-          changes.push(studentChanges);
-        }
-      }
+    if (!snapshot1 || !snapshot2) {
+      return {
+        error: "One or both snapshots not found",
+        date1: Utilities.formatDate(date1, Session.getScriptTimeZone(), "MMM d, yyyy"),
+        date2: Utilities.formatDate(date2, Session.getScriptTimeZone(), "MMM d, yyyy")
+      };
     }
 
+    // Compare all aggregate metrics
+    const metricsToCompare = [
+      { key: 'totalStudents', label: 'Total Students' },
+      { key: 'ineligibleStudents', label: 'Ineligible Students' },
+      { key: 'ineligibilityRate', label: 'Ineligibility Rate (%)', precision: 1 },
+      { key: 'studentsWithFGrades', label: 'Students with F Grades' },
+      { key: 'studentsWith1F', label: 'Students with 1 F' },
+      { key: 'studentsWith2PlusF', label: 'Students with 2+ F' },
+      { key: 'totalFGrades', label: 'Total F Grades' },
+      { key: 'avgUnservedDetention', label: 'Avg Unserved Detention', precision: 2 },
+      { key: 'studentsWithDetention', label: 'Students with Detention' },
+      { key: 'totalAbsences', label: 'Total Absences' },
+      { key: 'avgAbsences', label: 'Avg Absences', precision: 2 },
+      { key: 'unexcusedAbsences', label: 'Unexcused Absences' },
+      { key: 'truancyAbsences', label: 'Truancy Absences' },
+      { key: 'medicalAbsences', label: 'Medical Absences' },
+      { key: 'illnessAbsences', label: 'Illness Absences' },
+      { key: 'spartanHourTotalRequests', label: 'Spartan Hour Total Requests' },
+      { key: 'spartanHourSkippedRequests', label: 'Spartan Hour Skipped' },
+      { key: 'spartanHourHighPriorityRequests', label: 'Spartan Hour High Priority' },
+      { key: 'studentsWithClubParticipation', label: 'Club Participation' },
+      { key: 'studentsInActivities', label: 'Students in Activities' },
+      { key: 'studentsWithTier2', label: 'Students with Tier 2' },
+      { key: 'studentsWithSpecialEd', label: 'Students with Special Ed' }
+    ];
+
+    const changes = metricsToCompare.map(metric => {
+      const value1 = snapshot1[metric.key] || 0;
+      const value2 = snapshot2[metric.key] || 0;
+      const delta = value2 - value1;
+      const percentChange = value1 !== 0 ? ((delta / value1) * 100) : 0;
+
+      return {
+        metric: metric.label,
+        oldValue: metric.precision ? value1.toFixed(metric.precision) : value1,
+        newValue: metric.precision ? value2.toFixed(metric.precision) : value2,
+        delta: metric.precision ? delta.toFixed(metric.precision) : delta,
+        percentChange: percentChange.toFixed(1)
+      };
+    }).filter(change => parseFloat(change.delta) !== 0); // Only show metrics that changed
+
     return {
-      date1: Utilities.formatDate(date1, Session.getScriptTimeZone(), "MMM d, yyyy"),
-      date2: Utilities.formatDate(date2, Session.getScriptTimeZone(), "MMM d, yyyy"),
-      totalStudentsDate1: snapshot1.length,
-      totalStudentsDate2: snapshot2.length,
-      changedStudents: changes
+      date1: snapshot1.formattedDate,
+      date2: snapshot2.formattedDate,
+      changes: changes,
+      allMetrics: metricsToCompare.map(metric => ({
+        metric: metric.label,
+        value1: metric.precision ? snapshot1[metric.key].toFixed(metric.precision) : snapshot1[metric.key],
+        value2: metric.precision ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
+      }))
     };
   } catch (e) {
     Logger.log(`Error comparing snapshots: ${e.message}`);
-    return null;
+    return { error: e.message };
   }
 }
 
 /**
- * Gets aggregated metrics for all snapshots to show trends over time.
- * @returns {Object[]} Array of aggregated metrics by date.
+ * Gets all snapshots for trend visualization (already includes aggregate metrics).
+ * @returns {Object[]} Array of snapshot objects sorted oldest to newest.
  */
 function getHistoricalTrends() {
   try {
-    const dates = getSnapshotDates();
-
-    return dates.map(date => {
-      const data = getSnapshotData(date);
-
-      return {
-        date: date,
-        formattedDate: Utilities.formatDate(date, Session.getScriptTimeZone(), "MMM d, yyyy"),
-        totalStudents: data.length,
-        studentsWithFGrades: data.filter(s => s.numFGrades > 0).length,
-        studentsWith1F: data.filter(s => s.numFGrades === 1).length,
-        studentsWith2PlusF: data.filter(s => s.numFGrades >= 2).length,
-        avgUnservedDetention: data.reduce((sum, s) => sum + s.unservedDetention, 0) / data.length,
-        avgTotalAbsences: data.reduce((sum, s) => sum + s.totalAbsences, 0) / data.length,
-        studentsWithDetention: data.filter(s => s.unservedDetention > 0).length,
-        studentsWithAbsences: data.filter(s => s.totalAbsences > 0).length
-      };
-    }).reverse(); // Oldest to newest for trend charts
+    const snapshots = getAllSnapshots();
+    // Sort oldest to newest for trend charts
+    return snapshots.sort((a, b) => new Date(a.date) - new Date(b.date));
   } catch (e) {
     Logger.log(`Error getting historical trends: ${e.message}`);
     return [];
