@@ -11,6 +11,36 @@
 // ===============================================================
 
 /**
+ * Centralized configuration for snapshot metrics.
+ * Ensures consistency across snapshot creation, retrieval, and comparison.
+ */
+const SNAPSHOT_METRICS_CONFIG = [
+  { key: 'snapshotDate', header: 'Snapshot Date', index: 0, type: 'date' },
+  { key: 'totalStudents', header: 'Total Students', index: 1, type: 'number', aggregator: (data) => data.length },
+  { key: 'ineligibleStudents', header: 'Ineligible Students', index: 2, type: 'number', aggregator: (data) => data.filter(s => s.ineligible).length },
+  { key: 'ineligibilityRate', header: 'Ineligibility Rate (%)', index: 3, type: 'number', precision: 1, aggregator: (data, metrics) => (metrics.ineligibleStudents / metrics.totalStudents) * 100 },
+  { key: 'studentsWithFGrades', header: 'Students with F Grades', index: 4, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades > 0).length },
+  { key: 'studentsWith1F', header: 'Students with 1 F', index: 5, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades === 1).length },
+  { key: 'studentsWith2PlusF', header: 'Students with 2+ F', index: 6, type: 'number', aggregator: (data) => data.filter(s => s.numFGrades >= 2).length },
+  { key: 'totalFGrades', header: 'Total F Grades', index: 7, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.numFGrades, 0) },
+  { key: 'avgUnservedDetention', header: 'Avg Unserved Detention', index: 8, type: 'number', precision: 2, aggregator: (data, metrics) => data.reduce((sum, s) => sum + s.unservedDetention, 0) / metrics.totalStudents },
+  { key: 'studentsWithDetention', header: 'Students with Detention', index: 9, type: 'number', aggregator: (data) => data.filter(s => s.unservedDetention > 0).length },
+  { key: 'totalAbsences', header: 'Total Absences', index: 10, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.totalAbsences, 0) },
+  { key: 'avgAbsences', header: 'Avg Absences', index: 11, type: 'number', precision: 2, aggregator: (data, metrics) => metrics.totalAbsences / metrics.totalStudents },
+  { key: 'unexcusedAbsences', header: 'Unexcused Absences', index: 12, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.unexcusedAbsences, 0) },
+  { key: 'truancyAbsences', header: 'Truancy Absences', index: 13, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.truancyAbsences, 0) },
+  { key: 'medicalAbsences', header: 'Medical Absences', index: 14, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.medicalAbsences, 0) },
+  { key: 'illnessAbsences', header: 'Illness Absences', index: 15, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.illnessAbsences, 0) },
+  { key: 'spartanHourTotalRequests', header: 'Spartan Hour Total Requests', index: 16, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0) },
+  { key: 'spartanHourSkippedRequests', header: 'Spartan Hour Skipped Requests', index: 17, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0) },
+  { key: 'spartanHourHighPriorityRequests', header: 'Spartan Hour High Priority Requests', index: 18, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0) },
+  { key: 'studentsWithClubParticipation', header: 'Students with Club Participation', index: 19, type: 'number', aggregator: (data) => data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length },
+  { key: 'studentsInActivities', header: 'Students in Activities', index: 20, type: 'number', aggregator: (data) => data.filter(s => s.activity && s.activity.trim() !== '').length },
+  { key: 'studentsWithTier2', header: 'Students with Tier 2', index: 21, type: 'number', aggregator: (data) => data.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '').length },
+  { key: 'studentsWithSpecialEd', header: 'Students with Special Ed', index: 22, type: 'number', aggregator: (data) => data.filter(s => s.caseManager && s.caseManager.trim() !== '').length }
+];
+
+/**
  * Creates a snapshot of GLOBAL AGGREGATE METRICS only (no individual student data).
  * This function should be triggered every Monday to preserve data before Tuesday updates.
  * @returns {boolean} True if snapshot was created successfully, false otherwise.
@@ -24,32 +54,8 @@ function createWeeklySnapshot() {
     if (!snapshotSheet) {
       snapshotSheet = ss.insertSheet("Historical Snapshots");
 
-      // Add headers for AGGREGATE METRICS ONLY
-      const headers = [
-        "Snapshot Date",
-        "Total Students",
-        "Ineligible Students",
-        "Ineligibility Rate (%)",
-        "Students with F Grades",
-        "Students with 1 F",
-        "Students with 2+ F",
-        "Total F Grades",
-        "Avg Unserved Detention",
-        "Students with Detention",
-        "Total Absences",
-        "Avg Absences",
-        "Unexcused Absences",
-        "Truancy Absences",
-        "Medical Absences",
-        "Illness Absences",
-        "Spartan Hour Total Requests",
-        "Spartan Hour Skipped Requests",
-        "Spartan Hour High Priority Requests",
-        "Students with Club Participation",
-        "Students in Activities",
-        "Students with Tier 2",
-        "Students with Special Ed"
-      ];
+      // Generate headers from centralized config
+      const headers = SNAPSHOT_METRICS_CONFIG.map(metric => metric.header);
       snapshotSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       snapshotSheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
       snapshotSheet.setFrozenRows(1);
@@ -63,63 +69,31 @@ function createWeeklySnapshot() {
       return false;
     }
 
-    // Calculate aggregate metrics
-    const snapshotDate = new Date();
-    const totalStudents = studentData.length;
-    const ineligibleStudents = studentData.filter(s => s.ineligible).length;
-    const studentsWithFGrades = studentData.filter(s => s.numFGrades > 0).length;
-    const studentsWith1F = studentData.filter(s => s.numFGrades === 1).length;
-    const studentsWith2PlusF = studentData.filter(s => s.numFGrades >= 2).length;
-    const totalFGrades = studentData.reduce((sum, s) => sum + s.numFGrades, 0);
-    const avgUnservedDetention = studentData.reduce((sum, s) => sum + s.unservedDetention, 0) / totalStudents;
-    const studentsWithDetention = studentData.filter(s => s.unservedDetention > 0).length;
-    const totalAbsences = studentData.reduce((sum, s) => sum + s.totalAbsences, 0);
-    const avgAbsences = totalAbsences / totalStudents;
-    const unexcusedAbsences = studentData.reduce((sum, s) => sum + s.unexcusedAbsences, 0);
-    const truancyAbsences = studentData.reduce((sum, s) => sum + s.truancyAbsences, 0);
-    const medicalAbsences = studentData.reduce((sum, s) => sum + s.medicalAbsences, 0);
-    const illnessAbsences = studentData.reduce((sum, s) => sum + s.illnessAbsences, 0);
-    const spartanHourTotalRequests = studentData.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0);
-    const spartanHourSkippedRequests = studentData.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0);
-    const spartanHourHighPriorityRequests = studentData.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0);
-    const studentsWithClubParticipation = studentData.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length;
-    const studentsInActivities = studentData.filter(s => s.activity && s.activity.trim() !== '').length;
-    const studentsWithTier2 = studentData.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '').length;
-    const studentsWithSpecialEd = studentData.filter(s => s.caseManager && s.caseManager.trim() !== '').length;
-    const ineligibilityRate = (ineligibleStudents / totalStudents) * 100;
+    // Calculate all metrics using centralized config
+    const metrics = { snapshotDate: new Date() };
 
-    // Create snapshot row (AGGREGATE DATA ONLY - NO INDIVIDUAL STUDENTS)
-    const snapshotRow = [
-      snapshotDate,
-      totalStudents,
-      ineligibleStudents,
-      ineligibilityRate,
-      studentsWithFGrades,
-      studentsWith1F,
-      studentsWith2PlusF,
-      totalFGrades,
-      avgUnservedDetention,
-      studentsWithDetention,
-      totalAbsences,
-      avgAbsences,
-      unexcusedAbsences,
-      truancyAbsences,
-      medicalAbsences,
-      illnessAbsences,
-      spartanHourTotalRequests,
-      spartanHourSkippedRequests,
-      spartanHourHighPriorityRequests,
-      studentsWithClubParticipation,
-      studentsInActivities,
-      studentsWithTier2,
-      studentsWithSpecialEd
-    ];
+    // First pass: calculate metrics that don't depend on other metrics
+    SNAPSHOT_METRICS_CONFIG.slice(1).forEach(config => {
+      if (config.aggregator && !config.aggregator.toString().includes('metrics')) {
+        metrics[config.key] = config.aggregator(studentData);
+      }
+    });
+
+    // Second pass: calculate metrics that depend on other metrics (like rates and averages)
+    SNAPSHOT_METRICS_CONFIG.slice(1).forEach(config => {
+      if (config.aggregator && config.aggregator.toString().includes('metrics')) {
+        metrics[config.key] = config.aggregator(studentData, metrics);
+      }
+    });
+
+    // Build snapshot row in correct column order using config indices
+    const snapshotRow = SNAPSHOT_METRICS_CONFIG.map(config => metrics[config.key]);
 
     // Append to snapshot sheet
     const nextRow = snapshotSheet.getLastRow() + 1;
     snapshotSheet.getRange(nextRow, 1, 1, snapshotRow.length).setValues([snapshotRow]);
 
-    Logger.log(`Successfully created global snapshot on ${snapshotDate}: ${totalStudents} students, ${ineligibilityRate.toFixed(1)}% ineligible`);
+    Logger.log(`Successfully created global snapshot on ${metrics.snapshotDate}: ${metrics.totalStudents} students, ${metrics.ineligibilityRate.toFixed(1)}% ineligible`);
     return true;
 
   } catch (e) {
@@ -169,33 +143,18 @@ function getAllSnapshots() {
     const numCols = snapshotSheet.getLastColumn();
     const data = snapshotSheet.getRange(2, 1, numRows, numCols).getValues();
 
-    // Map each row to an object with aggregate metrics
-    return data.map(row => ({
-      date: row[0],
-      formattedDate: Utilities.formatDate(row[0], Session.getScriptTimeZone(), "MMM d, yyyy"),
-      totalStudents: row[1],
-      ineligibleStudents: row[2],
-      ineligibilityRate: row[3],
-      studentsWithFGrades: row[4],
-      studentsWith1F: row[5],
-      studentsWith2PlusF: row[6],
-      totalFGrades: row[7],
-      avgUnservedDetention: row[8],
-      studentsWithDetention: row[9],
-      totalAbsences: row[10],
-      avgAbsences: row[11],
-      unexcusedAbsences: row[12],
-      truancyAbsences: row[13],
-      medicalAbsences: row[14],
-      illnessAbsences: row[15],
-      spartanHourTotalRequests: row[16],
-      spartanHourSkippedRequests: row[17],
-      spartanHourHighPriorityRequests: row[18],
-      studentsWithClubParticipation: row[19],
-      studentsInActivities: row[20],
-      studentsWithTier2: row[21],
-      studentsWithSpecialEd: row[22]
-    }));
+    // Map each row to an object using centralized config (no hardcoded indices)
+    return data.map(row => {
+      const snapshot = {};
+      SNAPSHOT_METRICS_CONFIG.forEach(config => {
+        snapshot[config.key] = row[config.index];
+      });
+      // Add formatted date for convenience
+      snapshot.formattedDate = Utilities.formatDate(snapshot.snapshotDate, Session.getScriptTimeZone(), "MMM d, yyyy");
+      // Maintain backward compatibility with 'date' property
+      snapshot.date = snapshot.snapshotDate;
+      return snapshot;
+    });
   } catch (e) {
     Logger.log(`Error getting snapshots: ${e.message}`);
     return [];
@@ -248,6 +207,14 @@ function getSnapshotList() {
  */
 function compareSnapshots(date1, date2) {
   try {
+    // Input validation: ensure dates are valid Date objects
+    if (!(date1 instanceof Date) || isNaN(date1.getTime())) {
+      return { error: "Invalid date1 parameter. Must be a valid Date object." };
+    }
+    if (!(date2 instanceof Date) || isNaN(date2.getTime())) {
+      return { error: "Invalid date2 parameter. Must be a valid Date object." };
+    }
+
     const snapshot1 = getSnapshotByDate(date1);
     const snapshot2 = getSnapshotByDate(date2);
 
@@ -259,44 +226,30 @@ function compareSnapshots(date1, date2) {
       };
     }
 
-    // Compare all aggregate metrics
-    const metricsToCompare = [
-      { key: 'totalStudents', label: 'Total Students' },
-      { key: 'ineligibleStudents', label: 'Ineligible Students' },
-      { key: 'ineligibilityRate', label: 'Ineligibility Rate (%)', precision: 1 },
-      { key: 'studentsWithFGrades', label: 'Students with F Grades' },
-      { key: 'studentsWith1F', label: 'Students with 1 F' },
-      { key: 'studentsWith2PlusF', label: 'Students with 2+ F' },
-      { key: 'totalFGrades', label: 'Total F Grades' },
-      { key: 'avgUnservedDetention', label: 'Avg Unserved Detention', precision: 2 },
-      { key: 'studentsWithDetention', label: 'Students with Detention' },
-      { key: 'totalAbsences', label: 'Total Absences' },
-      { key: 'avgAbsences', label: 'Avg Absences', precision: 2 },
-      { key: 'unexcusedAbsences', label: 'Unexcused Absences' },
-      { key: 'truancyAbsences', label: 'Truancy Absences' },
-      { key: 'medicalAbsences', label: 'Medical Absences' },
-      { key: 'illnessAbsences', label: 'Illness Absences' },
-      { key: 'spartanHourTotalRequests', label: 'Spartan Hour Total Requests' },
-      { key: 'spartanHourSkippedRequests', label: 'Spartan Hour Skipped' },
-      { key: 'spartanHourHighPriorityRequests', label: 'Spartan Hour High Priority' },
-      { key: 'studentsWithClubParticipation', label: 'Club Participation' },
-      { key: 'studentsInActivities', label: 'Students in Activities' },
-      { key: 'studentsWithTier2', label: 'Students with Tier 2' },
-      { key: 'studentsWithSpecialEd', label: 'Students with Special Ed' }
-    ];
+    // Use centralized config (exclude date column from comparison)
+    const metricsToCompare = SNAPSHOT_METRICS_CONFIG.filter(m => m.key !== 'snapshotDate');
 
     const changes = metricsToCompare.map(metric => {
       const value1 = snapshot1[metric.key] || 0;
       const value2 = snapshot2[metric.key] || 0;
       const delta = value2 - value1;
-      const percentChange = value1 !== 0 ? ((delta / value1) * 100) : 0;
+
+      // Handle division by zero for percent change calculation
+      let percentChange;
+      if (value1 === 0 && value2 === 0) {
+        percentChange = 0; // No change: both are zero
+      } else if (value1 === 0 && value2 !== 0) {
+        percentChange = 'N/A'; // Can't calculate percent change from zero baseline
+      } else {
+        percentChange = ((delta / value1) * 100).toFixed(1);
+      }
 
       return {
-        metric: metric.label,
+        metric: metric.header,
         oldValue: metric.precision ? value1.toFixed(metric.precision) : value1,
         newValue: metric.precision ? value2.toFixed(metric.precision) : value2,
         delta: metric.precision ? delta.toFixed(metric.precision) : delta,
-        percentChange: percentChange.toFixed(1)
+        percentChange: percentChange
       };
     }).filter(change => parseFloat(change.delta) !== 0); // Only show metrics that changed
 
@@ -305,7 +258,7 @@ function compareSnapshots(date1, date2) {
       date2: snapshot2.formattedDate,
       changes: changes,
       allMetrics: metricsToCompare.map(metric => ({
-        metric: metric.label,
+        metric: metric.header,
         value1: metric.precision ? snapshot1[metric.key].toFixed(metric.precision) : snapshot1[metric.key],
         value2: metric.precision ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
       }))

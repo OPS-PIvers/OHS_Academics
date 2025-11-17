@@ -143,29 +143,33 @@
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-gray-700">Historical Snapshot Management</h2>
-                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Create Snapshot Now</button>
+                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create new snapshot">Create Snapshot Now</button>
                     </div>
                     <p class="text-sm text-gray-600 mb-4">Snapshots are automatically captured every Monday at 11:00 AM before the Tuesday data updates. View trends and compare data week-over-week.</p>
+                    <!-- Inline notification message div -->
+                    <div id="snapshot-message" class="hidden mb-4 p-4 rounded-lg" role="alert" aria-live="polite"></div>
                     <div id="snapshot-info" class="text-sm text-gray-700"></div>
                 </div>
 
                 <div class="card mb-6">
                     <h2 class="text-xl font-semibold text-gray-700 mb-4">Week-Over-Week Comparison</h2>
+                    <!-- Inline validation message div -->
+                    <div id="comparison-message" class="hidden mb-4 p-3 rounded-lg" role="alert" aria-live="polite"></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="comparison-date-1" class="block text-sm font-medium text-gray-700 mb-1">Select First Week</label>
-                            <select id="comparison-date-1" class="filter-select w-full">
+                            <select id="comparison-date-1" class="filter-select w-full" aria-label="Select first snapshot date for comparison">
                                 <option value="">Select a snapshot date...</option>
                             </select>
                         </div>
                         <div>
                             <label for="comparison-date-2" class="block text-sm font-medium text-gray-700 mb-1">Select Second Week</label>
-                            <select id="comparison-date-2" class="filter-select w-full">
+                            <select id="comparison-date-2" class="filter-select w-full" aria-label="Select second snapshot date for comparison">
                                 <option value="">Select a snapshot date...</option>
                             </select>
                         </div>
                     </div>
-                    <button id="compare-snapshots-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">Compare Snapshots</button>
+                    <button id="compare-snapshots-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition" aria-label="Compare selected snapshots">Compare Snapshots</button>
                     <div id="comparison-results" class="mt-4"></div>
                 </div>
 
@@ -793,8 +797,10 @@
                 }
             });
 
-            // Ineligibility Rate Chart
-            const ineligibilityRates = historicalData.map(d => ((d.studentsWith2PlusF / d.totalStudents) * 100).toFixed(1));
+            // Ineligibility Rate Chart with division by zero protection
+            const ineligibilityRates = historicalData.map(d => {
+                return d.totalStudents > 0 ? ((d.studentsWith2PlusF / d.totalStudents) * 100).toFixed(1) : 0;
+            });
             if (charts.historicalIneligibility) charts.historicalIneligibility.destroy();
             charts.historicalIneligibility = new Chart(document.getElementById('historical-ineligibility-chart'), {
                 type: 'line',
@@ -820,25 +826,54 @@
             });
         }
 
+        // Helper function to show inline messages instead of alerts
+        function showMessage(elementId, message, type = 'info') {
+            const messageDiv = document.getElementById(elementId);
+            messageDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-blue-100', 'text-green-800', 'text-red-800', 'text-blue-800');
+
+            if (type === 'success') {
+                messageDiv.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                messageDiv.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                messageDiv.classList.add('bg-blue-100', 'text-blue-800');
+            }
+
+            messageDiv.textContent = message;
+
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
         // Setup event listeners for historical tab
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('create-snapshot-btn').addEventListener('click', () => {
                 const btn = document.getElementById('create-snapshot-btn');
                 btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.setAttribute('aria-disabled', 'true');
                 btn.textContent = 'Creating...';
 
                 google.script.run
                     .withSuccessHandler(() => {
                         btn.disabled = false;
+                        btn.removeAttribute('aria-busy');
+                        btn.removeAttribute('aria-disabled');
                         btn.textContent = 'Create Snapshot Now';
                         historicalData = null;
                         loadHistoricalData();
-                        alert('Snapshot created successfully!');
+                        showMessage('snapshot-message', 'Snapshot created successfully!', 'success');
                     })
                     .withFailureHandler(error => {
                         btn.disabled = false;
+                        btn.removeAttribute('aria-busy');
+                        btn.removeAttribute('aria-disabled');
                         btn.textContent = 'Create Snapshot Now';
-                        alert('Error creating snapshot: ' + error);
+                        showMessage('snapshot-message', 'Error creating snapshot: ' + error, 'error');
                     })
                     .createWeeklySnapshot();
             });
@@ -847,13 +882,16 @@
                 const date1 = document.getElementById('comparison-date-1').value;
                 const date2 = document.getElementById('comparison-date-2').value;
 
+                // Clear previous messages
+                document.getElementById('comparison-message').classList.add('hidden');
+
                 if (!date1 || !date2) {
-                    alert('Please select two snapshot dates to compare.');
+                    showMessage('comparison-message', 'Please select two snapshot dates to compare.', 'error');
                     return;
                 }
 
                 if (date1 === date2) {
-                    alert('Please select two different snapshot dates.');
+                    showMessage('comparison-message', 'Please select two different snapshot dates.', 'error');
                     return;
                 }
 
@@ -893,11 +931,13 @@
 
                 comparison.changes.forEach(change => {
                     const delta = parseFloat(change.delta);
-                    const percentChange = parseFloat(change.percentChange);
+                    // Handle 'N/A' for percent change when baseline is zero
+                    const percentChange = change.percentChange === 'N/A' ? 'N/A' : parseFloat(change.percentChange);
 
                     let rowColor = 'bg-white';
                     let deltaColor = 'text-gray-600';
                     let arrow = '';
+                    let textIndicator = '';
 
                     if (delta > 0) {
                         // Check if increase is concerning based on metric
@@ -907,10 +947,12 @@
                             rowColor = 'bg-red-50';
                             deltaColor = 'text-red-700 font-semibold';
                             arrow = '↑';
+                            textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
                         } else {
                             rowColor = 'bg-green-50';
                             deltaColor = 'text-green-700 font-semibold';
                             arrow = '↑';
+                            textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
                         }
                     } else if (delta < 0) {
                         // Check if decrease is good based on metric
@@ -920,19 +962,26 @@
                             rowColor = 'bg-green-50';
                             deltaColor = 'text-green-700 font-semibold';
                             arrow = '↓';
+                            textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
                         } else {
                             rowColor = 'bg-red-50';
                             deltaColor = 'text-red-700 font-semibold';
                             arrow = '↓';
+                            textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
                         }
                     }
 
+                    // Format percent change display
+                    const percentDisplay = percentChange === 'N/A'
+                        ? 'N/A'
+                        : `${percentChange > 0 ? '+' : ''}${percentChange}%`;
+
                     html += `<tr class="${rowColor}">
-                        <td class="border border-gray-300 px-4 py-2">${change.metric}</td>
+                        <td class="border border-gray-300 px-4 py-2">${textIndicator}${change.metric}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">${change.oldValue}</td>
                         <td class="border border-gray-300 px-4 py-2 text-center">${change.newValue}</td>
-                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}">${arrow} ${delta > 0 ? '+' : ''}${change.delta}</td>
-                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}">${percentChange > 0 ? '+' : ''}${change.percentChange}%</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}" aria-label="${arrow === '↑' ? 'Increased by' : 'Decreased by'} ${Math.abs(delta)}">${arrow} ${delta > 0 ? '+' : ''}${change.delta}</td>
+                        <td class="border border-gray-300 px-4 py-2 text-center ${deltaColor}">${percentDisplay}</td>
                     </tr>`;
                 });
 

@@ -78,7 +78,7 @@ To compare **global metrics** between two specific weeks:
 
 ### Understanding the Data
 
-**23 Aggregate Metrics Tracked (NO individual student data):**
+**22 Aggregate Metrics Tracked** (plus snapshot date - NO individual student data):
 
 **Student Counts:**
 - Total Students
@@ -118,7 +118,7 @@ To compare **global metrics** between two specific weeks:
 
 - **Sheet Name**: `Historical Snapshots`
 - **Location**: Automatically created in your spreadsheet on first snapshot
-- **Data Format**: One row per snapshot, 23 aggregate metrics per row
+- **Data Format**: One row per snapshot, 23 columns total (1 date + 22 metrics)
 - **Data Retention**: All snapshots are preserved indefinitely
 - **Privacy**: NO individual student names, IDs, or personally identifiable information
 
