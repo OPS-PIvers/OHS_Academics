@@ -649,11 +649,17 @@
             document.getElementById('snapshot-info').innerHTML = '<p class="text-gray-500">Loading historical data...</p>';
 
             google.script.run
-                .withSuccessHandler(data => {
-                    historicalData = data;
+                .withSuccessHandler(response => {
+                    if (!response || typeof response.trends === 'undefined' || typeof response.snapshotList === 'undefined') {
+                        console.error('Received invalid response from getHistoricalDataForClient:', response);
+                        document.getElementById('snapshot-info').innerHTML = '<p class="text-red-500">Error: Invalid historical data received from server.</p>';
+                        return;
+                    }
+                    historicalData = response.trends;
+                    const snapshotList = response.snapshotList;
                     displayHistoricalInfo();
-                    populateSnapshotSelectors();
-                    if (data && data.length > 0) {
+                    populateSnapshotSelectors(snapshotList);
+                    if (historicalData && historicalData.length > 0) {
                         renderHistoricalCharts();
                     }
                 })
@@ -661,7 +667,7 @@
                     console.error('Error loading historical data:', error);
                     document.getElementById('snapshot-info').innerHTML = '<p class="text-red-500">Error loading historical data. Please try again.</p>';
                 })
-                .getHistoricalTrends();
+                .getHistoricalDataForClient();
         }
 
         function displayHistoricalInfo() {
@@ -689,22 +695,17 @@
             }
         }
 
-        function populateSnapshotSelectors() {
-            google.script.run
-                .withSuccessHandler(snapshots => {
-                    const selector1 = document.getElementById('comparison-date-1');
-                    const selector2 = document.getElementById('comparison-date-2');
+        function populateSnapshotSelectors(snapshots) {
+            const selector1 = document.getElementById('comparison-date-1');
+            const selector2 = document.getElementById('comparison-date-2');
 
-                    selector1.innerHTML = '<option value="">Select a snapshot date...</option>';
-                    selector2.innerHTML = '<option value="">Select a snapshot date...</option>';
+            selector1.innerHTML = '<option value="">Select a snapshot date...</option>';
+            selector2.innerHTML = '<option value="">Select a snapshot date...</option>';
 
-                    snapshots.forEach(snapshot => {
-                        selector1.innerHTML += `<option value="${snapshot.timestamp}">${snapshot.formattedDate}</option>`;
-                        selector2.innerHTML += `<option value="${snapshot.timestamp}">${snapshot.formattedDate}</option>`;
-                    });
-                })
-                .withFailureHandler(error => console.error('Error loading snapshot list:', error))
-                .getSnapshotList();
+            snapshots.forEach(snapshot => {
+                selector1.innerHTML += `<option value="${snapshot.timestamp}">${snapshot.formattedDate}</option>`;
+                selector2.innerHTML += `<option value="${snapshot.timestamp}">${snapshot.formattedDate}</option>`;
+            });
         }
 
         function renderHistoricalCharts() {

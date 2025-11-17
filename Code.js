@@ -273,14 +273,29 @@ function compareSnapshots(date1, date2) {
  * Gets all snapshots for trend visualization (already includes aggregate metrics).
  * @returns {Object[]} Array of snapshot objects sorted oldest to newest.
  */
-function getHistoricalTrends() {
+function getHistoricalDataForClient() {
   try {
     const snapshots = getAllSnapshots();
-    // Sort oldest to newest for trend charts
-    return snapshots.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Sort oldest to newest for trend charts and convert Date objects to timestamps
+    const trends = snapshots.sort((a, b) => new Date(a.date) - new Date(b.date)).map(snapshot => {
+      const newSnapshot = { ...snapshot };
+      newSnapshot.snapshotDate = newSnapshot.snapshotDate.getTime(); // Convert Date to timestamp
+      newSnapshot.date = newSnapshot.date.getTime(); // Convert Date to timestamp for consistency
+      return newSnapshot;
+    });
+
+    // Map for snapshot selectors (newest first)
+    const snapshotList = snapshots.map(snapshot => ({
+      date: snapshot.date.getTime(), // Ensure timestamp
+      formattedDate: snapshot.formattedDate,
+      timestamp: snapshot.date.getTime()
+    })).sort((a, b) => b.date - a.date); // Ensure newest first for selectors (using timestamp)
+
+    return { trends: trends, snapshotList: snapshotList };
   } catch (e) {
-    Logger.log(`Error getting historical trends: ${e.message}`);
-    return [];
+    Logger.log(`Error getting historical data for client: ${e.message}`);
+    return { trends: [], snapshotList: [] };
   }
 }
 
