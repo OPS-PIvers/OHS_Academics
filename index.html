@@ -68,6 +68,7 @@
             <div class="mb-6 border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                     <button id="tab-students" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-white border-white">Student List</button>
+                    <button id="tab-spartan-students" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300 hidden">My Spartan Hour Students</button>
                     <button id="tab-visuals" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Data Visualizations</button>
                     <button id="tab-historical" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Historical Trends</button>
                 </nav>
@@ -95,6 +96,16 @@
                 </div>
             </div>
 
+            <div id="tab-content-spartan-students" class="hidden">
+                <div class="card mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">My Spartan Hour Students</h2>
+                    </div>
+                    <div class="overflow-x-auto"><table class="fixed-table"><thead class="bg-gray-50 sticky top-0 z-10"><tr><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th><th class="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th><th class="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activities</th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Failing</th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Detention</th><th class="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absences</th><th class="w-2/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Spartan Hour</th></tr></thead><tbody id="spartan-student-list" class="bg-white divide-y divide-gray-200"></tbody></table></div>
+                    <div id="no-spartan-students-message" class="text-center py-8 text-gray-500 hidden">No Spartan Hour students found assigned to you.</div>
+                </div>
+            </div>
+
             <div id="tab-content-visuals" class="hidden">
                  <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
@@ -108,7 +119,12 @@
                         </div>
                         <div>
                             <label for="sped-filter" class="block text-sm font-medium text-gray-700 mb-1">Student Group</label>
-                            <select id="sped-filter" class="filter-select w-full"><option value="all">All Students</option><option value="sped">Special Education</option><option value="gened">General Education</option><option value="tier2">Tier 2</option></select>
+                            <select id="sped-filter" class="filter-select w-full">
+                                <option value="all">All Students</option>
+                                <option value="sped">Special Education</option>
+                                <option value="gened">General Education</option>
+                                <option value="tier2">Tier 2</option>
+                            </select>
                         </div>
                         <div>
                             <label for="activity-filter" class="block text-sm font-medium text-gray-700 mb-1">Activity / Team</label>
@@ -190,6 +206,7 @@
         const USER_ROLE = '<?= userRole ?>';
         const USER_NAME = '<?= userName ?>';
         const USER_EMAIL = '<?= userEmail ?>';
+        const IS_SPARTAN_HOUR_TEACHER = <?= isSpartanHourTeacher ?>;
 
         let allStudentData = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
         let baselineKPIs = {};
@@ -236,10 +253,25 @@
                 tabStudents.classList.remove('text-white', 'border-white');
                 tabStudents.classList.add('text-gray-400', 'border-transparent');
 
-                // Set Data Visualizations as default active tab
-                const tabVisuals = document.getElementById('tab-visuals');
-                tabVisuals.classList.add('text-white', 'border-white');
-                tabVisuals.classList.remove('text-gray-400', 'border-transparent');
+                if (IS_SPARTAN_HOUR_TEACHER) {
+                     // Show Spartan Hour Students tab
+                    const tabSpartan = document.getElementById('tab-spartan-students');
+                    tabSpartan.classList.remove('hidden');
+
+                    // Set My Spartan Hour Students as default active tab
+                    tabSpartan.classList.add('text-white', 'border-white');
+                    tabSpartan.classList.remove('text-gray-400', 'border-transparent');
+
+                    // Data Visualizations inactive by default in this case
+                    const tabVisuals = document.getElementById('tab-visuals');
+                    tabVisuals.classList.remove('text-white', 'border-white');
+                    tabVisuals.classList.add('text-gray-400', 'border-transparent');
+                } else {
+                    // Set Data Visualizations as default active tab
+                    const tabVisuals = document.getElementById('tab-visuals');
+                    tabVisuals.classList.add('text-white', 'border-white');
+                    tabVisuals.classList.remove('text-gray-400', 'border-transparent');
+                }
             }
         }
         
@@ -261,23 +293,31 @@
             applyStudentListFilters();
             updateSortIcons();
 
-            // For TEACHERs, show Data Visualizations tab content by default
+            // For TEACHERs, show Data Visualizations or Spartan tab content by default
             if (USER_ROLE === 'TEACHER') {
                 document.getElementById('tab-content-students').classList.add('hidden');
-                document.getElementById('tab-content-visuals').classList.remove('hidden');
+                if (IS_SPARTAN_HOUR_TEACHER) {
+                    document.getElementById('tab-content-spartan-students').classList.remove('hidden');
+                    renderSpartanStudentList(data);
+                } else {
+                    document.getElementById('tab-content-visuals').classList.remove('hidden');
+                }
             }
         }
 
         function setupTabs() {
             const tabStudents = document.getElementById('tab-students');
+            const tabSpartan = document.getElementById('tab-spartan-students');
             const tabVisuals = document.getElementById('tab-visuals');
             const tabHistorical = document.getElementById('tab-historical');
+
             const contentStudents = document.getElementById('tab-content-students');
+            const contentSpartan = document.getElementById('tab-content-spartan-students');
             const contentVisuals = document.getElementById('tab-content-visuals');
             const contentHistorical = document.getElementById('tab-content-historical');
 
             const switchTab = (activeTab, activeContent) => {
-                [tabStudents, tabVisuals, tabHistorical].forEach(tab => {
+                [tabStudents, tabSpartan, tabVisuals, tabHistorical].forEach(tab => {
                     const isActive = tab === activeTab;
                     tab.classList.toggle('text-white', isActive);
                     tab.classList.toggle('border-white', isActive);
@@ -286,12 +326,13 @@
                     tab.classList.toggle('hover:text-white', !isActive);
                     tab.classList.toggle('hover:border-gray-300', !isActive);
                 });
-                [contentStudents, contentVisuals, contentHistorical].forEach(content => {
+                [contentStudents, contentSpartan, contentVisuals, contentHistorical].forEach(content => {
                     content.classList.toggle('hidden', content !== activeContent);
                 });
             };
 
             tabStudents.addEventListener('click', () => switchTab(tabStudents, contentStudents));
+            tabSpartan.addEventListener('click', () => switchTab(tabSpartan, contentSpartan));
             tabVisuals.addEventListener('click', () => switchTab(tabVisuals, contentVisuals));
             tabHistorical.addEventListener('click', () => {
                 switchTab(tabHistorical, contentHistorical);
@@ -340,6 +381,15 @@
         }
 
         function setupGlobalFilters() {
+             // Add Spartan Hour option if applicable
+            if (IS_SPARTAN_HOUR_TEACHER) {
+                const spedFilter = document.getElementById('sped-filter');
+                const option = document.createElement('option');
+                option.value = 'myspartan';
+                option.text = 'My Spartan Hour Students';
+                spedFilter.add(option);
+            }
+
             document.getElementById('global-filters').addEventListener('change', e => {
                 const { id, value } = e.target;
                 if (id === 'grade-filter') globalFilters.grade = value;
@@ -352,9 +402,12 @@
         function updateDashboard() {
             let data = allStudentData;
             if (globalFilters.grade !== 'all') data = data.filter(s => s.grade == globalFilters.grade);
+
             if (globalFilters.sped === 'sped') data = data.filter(s => s.caseManager);
             if (globalFilters.sped === 'gened') data = data.filter(s => !s.caseManager);
             if (globalFilters.sped === 'tier2') data = data.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '');
+            if (globalFilters.sped === 'myspartan') data = data.filter(s => s.isMySpartanHourStudent);
+
             if (globalFilters.activity !== 'all') data = data.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(globalFilters.activity));
             
             renderKPIs(data);
@@ -419,8 +472,23 @@
                 comparisons.push({ label: `Grade ${grade} (All Students)`, value: calculateGroupKPIs(gradeAllSubgroupsData)[kpiKey] });
             }
             if (sped !== 'all' && (grade !== 'all' || activity !== 'all')) {
-                 const spedLabel = sped === 'sped' ? 'SPED' : (sped === 'gened' ? 'GenEd' : 'Tier 2');
-                 const spedAllSubgroupsData = allStudentData.filter(s => (sped === 'sped' ? s.caseManager : (sped === 'gened' ? !s.caseManager : (sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true))));
+                 let spedLabel = '';
+                 let spedAllSubgroupsData = [];
+
+                 if (sped === 'sped') {
+                     spedLabel = 'SPED';
+                     spedAllSubgroupsData = allStudentData.filter(s => s.caseManager);
+                 } else if (sped === 'gened') {
+                     spedLabel = 'GenEd';
+                     spedAllSubgroupsData = allStudentData.filter(s => !s.caseManager);
+                 } else if (sped === 'tier2') {
+                     spedLabel = 'Tier 2';
+                     spedAllSubgroupsData = allStudentData.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '');
+                 } else if (sped === 'myspartan') {
+                     spedLabel = 'My Spartan Students';
+                     spedAllSubgroupsData = allStudentData.filter(s => s.isMySpartanHourStudent);
+                 }
+
                  comparisons.push({ label: `${spedLabel} (All Grades)`, value: calculateGroupKPIs(spedAllSubgroupsData)[kpiKey] });
             }
              if (activity !== 'all' && (grade !== 'all' || sped !== 'all')) {
@@ -575,7 +643,23 @@
             const listBody = document.getElementById('student-list'), noResults = document.getElementById('no-students-message');
             if (data.length === 0) { listBody.innerHTML = ''; noResults.classList.remove('hidden'); return; }
             noResults.classList.add('hidden');
-            listBody.innerHTML = data.map(s => `<tr class="${s.ineligible ? 'bg-red-50' : 'bg-white'}">
+            listBody.innerHTML = data.map(s => createStudentRow(s)).join('');
+        }
+
+        function renderSpartanStudentList(allData) {
+            const data = allData.filter(s => s.isMySpartanHourStudent);
+            const listBody = document.getElementById('spartan-student-list'), noResults = document.getElementById('no-spartan-students-message');
+            if (data.length === 0) { listBody.innerHTML = ''; noResults.classList.remove('hidden'); return; }
+            noResults.classList.add('hidden');
+
+            // Sort by name
+            data.sort((a, b) => a.studentName.localeCompare(b.studentName));
+
+            listBody.innerHTML = data.map(s => createStudentRow(s)).join('');
+        }
+
+        function createStudentRow(s) {
+             return `<tr class="${s.ineligible ? 'bg-red-50' : 'bg-white'}">
                 <td class="px-6 py-4 text-sm text-gray-500 text-center">${s.grade}</td>
                 <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div>${s.caseManager ? `<div class="text-xs font-semibold text-blue-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="caseManager">Sp.Ed.</div>` : ''}${s.tier2Interventions || s.tier2Instructor ? `<div class="text-xs font-semibold text-purple-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="tier2">Tier 2</div>` : ''}</td>
                 <td class="px-6 py-4 text-xs text-gray-500">${s.activity || ''}</td>
@@ -583,7 +667,7 @@
                 <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.unservedDetention > 0 ? 'border-2 border-red-700' : ''}" data-student='${JSON.stringify(s)}' data-type="detention">${s.unservedDetention} hrs</td>
                 <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="absences">${s.totalAbsences}</td>
                 <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="spartanHour">${s.spartanHourTotalRequests} request${s.spartanHourTotalRequests === 1 ? '' : 's'}</td>
-            </tr>`).join('');
+            </tr>`;
         }
         
         function setupTooltips() {
