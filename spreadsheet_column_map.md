@@ -91,6 +91,31 @@ Tab name: Attendance Letters
 7 : H : [BLANK] :
 8 : I : Med Note List as of [MM/DD] ("Last, First"):  Text
 
+Tab name: Historical Data
+0 : A : Snapshot Date : Date
+1 : B : Total Students : Integer
+2 : C : Ineligible Students : Integer
+3 : D : Ineligibility Rate (%) : Percentage
+4 : E : Students with F Grades : Integer
+5 : F : Students with 1 F : Integer
+6 : G : Students with 2+ F : Integer
+7 : H : Total F Grades : Integer
+8 : I : Avg Unserved Detention : Number
+9 : J : Students with Detention : Integer
+10 : K : Total Absences : Integer
+11 : L : Avg Absences : Number
+12 : M : Unexcused Absences : Integer
+13 : N : Truancy Absences : Integer
+14 : O : Medical Absences : Integer
+15 : P : Illness Absences : Integer
+16 : Q : Spartan Hour Total Requests : Integer
+17 : R : Spartan Hour Skipped Requests : Integer
+18 : S : Spartan Hour High Priority Requests : Integer
+19 : T : Students with Club Participation : Integer
+20 : U : Students in Activities : Integer
+21 : V : Students with Tier 2 : Integer
+22 : W : Students with Special Ed : Integer
+
 Tab name: 
 0 : A :  : 
 1 : B :  : 
@@ -119,3 +144,4 @@ Tab name:
 24 : Y :  : 
 25 : Z :  : 
 26 : AA :  : 
+
