@@ -32,6 +32,8 @@ Tab name: ⭐Academics & Attendance Hub
 26 : AA : Spartan Hour Reqs High Priority : Number (1) 
 27 : AB : Total Club Meetings Attended : Number (1) : 
 28 : AC : Clubs Attended : Text
+29 : AD : Consecutive Weeks on D/F List : Number (1)
+30 : AE : Spartan Hour Advisor : Text
 
 Tab name: Spartan Hour Intervention
 0 : A : Student last : Text
@@ -120,6 +122,10 @@ Tab name: Staff Roles
 0 : A : Name : Text [First Last]
 1 : B : Email : first.last@orono.k12.mn.us
 2 : C : Role : "TEACHER", "ADMIN"
+
+Tab name: Spartan Hour Rosters
+0 : A : Spartan Hour Teacher : Name (First Last)
+1 : B : Student Name : Name (Last, First)
 
 Tab name: 
 0 : A :  : 

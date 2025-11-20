@@ -1028,7 +1028,9 @@ function getAnonymizedStudentData() {
       "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
     ];
 
-    const data = values.map((row, index) => {
+    const data = values
+    .filter(row => row[1] && row[1].toString().trim() !== '') // Filter out rows with no student name BEFORE mapping
+    .map((row, index) => {
       let obj = {};
       headers.forEach((key, i) => {
         let value = row[i];
@@ -1055,7 +1057,7 @@ function getAnonymizedStudentData() {
 
       obj.mostRecentSpartanHourRequest = '';
       return obj;
-    }).filter(student => student.studentName);
+    });
 
     return data;
   } catch (e) {
