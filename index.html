@@ -127,6 +127,7 @@
                     <div id="kpi-spartan-skipped-requests-card" class="card kpi-card"><div id="spartan-skipped-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Skipped Requests</div></div>
                     <div id="kpi-spartan-high-priority-requests-card" class="card kpi-card"><div id="spartan-high-priority-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour High Priority Requests</div></div>
                     <div id="kpi-total-students-with-club-meetings-card" class="card kpi-card"><div id="total-students-with-club-meetings" class="kpi-value">0</div><div class="kpi-label">Club Participation</div></div>
+                    <div id="kpi-df-no-request-card" class="card kpi-card clickable"><div id="df-no-request-count" class="kpi-value">0</div><div class="kpi-label">D/F Students - No SH Request</div></div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -195,6 +196,7 @@
         let baselineKPIs = {};
         let historicalData = null;
         let aggregatedData = null;
+        let dfNoRequestData = null;
         const tooltip = document.getElementById('tooltip');
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -266,6 +268,23 @@
                 document.getElementById('tab-content-students').classList.add('hidden');
                 document.getElementById('tab-content-visuals').classList.remove('hidden');
             }
+
+            // Load D/F No Request Data separately
+            google.script.run
+                .withSuccessHandler(updateDFCard)
+                .withFailureHandler(error => console.error("Error loading DF stats:", error))
+                .getDFNoRequestStats();
+        }
+
+        function updateDFCard(data) {
+            dfNoRequestData = data;
+            // Update the card label to include the date if available
+            if (data && data.date) {
+                 const label = document.querySelector('#kpi-df-no-request-card .kpi-label');
+                 if (label) {
+                     label.textContent = `D/F Students - No SH Request (${data.date})`;
+                 }
+            }
         }
 
         function setupTabs() {
@@ -305,7 +324,7 @@
 
         function calculateGroupKPIs(data) {
             const totalStudents = data.length;
-            if (totalStudents === 0) return { totalStudents: 0, ineligibleStudents: 0, ineligibilityRate: 0, avgAbsences: 0, totalFGrades: 0, spartanHourTotalRequests: 0, spartanHourSkippedRequests: 0, spartanHourReqsHighPriority: 0, totalStudentsWithClubMeetings: 0 };
+            if (totalStudents === 0) return { totalStudents: 0, ineligibleStudents: 0, ineligibilityRate: 0, avgAbsences: 0, totalFGrades: 0, spartanHourTotalRequests: 0, spartanHourSkippedRequests: 0, spartanHourReqsHighPriority: 0, totalStudentsWithClubMeetings: 0, dfNoRequestCount: 0 };
             
             const ineligibleStudents = data.filter(s => s.ineligible).length;
             const totalAbsences = data.reduce((sum, s) => sum + s.totalAbsences, 0);
@@ -313,6 +332,7 @@
             const spartanHourTotalRequests = data.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0);
             const spartanHourSkippedRequests = data.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0);
             const spartanHourReqsHighPriority = data.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0);
+            const dfNoRequestCount = data.filter(s => s.isDFNoRequest).length;
 
             return {
                 totalStudents: totalStudents,
@@ -323,7 +343,8 @@
                 spartanHourTotalRequests: spartanHourTotalRequests,
                 spartanHourSkippedRequests: spartanHourSkippedRequests,
                 spartanHourReqsHighPriority: spartanHourReqsHighPriority,
-                totalStudentsWithClubMeetings: data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length
+                totalStudentsWithClubMeetings: data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length,
+                dfNoRequestCount: dfNoRequestCount
             };
         }
 
@@ -374,6 +395,7 @@
             document.getElementById('spartan-skipped-requests').textContent = currentKPIs.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = currentKPIs.spartanHourReqsHighPriority;
             document.getElementById('total-students-with-club-meetings').textContent = currentKPIs.totalStudentsWithClubMeetings;
+            document.getElementById('df-no-request-count').textContent = currentKPIs.dfNoRequestCount;
 
             const kpiCardInfo = [
                 { id: 'kpi-ineligibility-rate-card', key: 'ineligibilityRate' },
@@ -384,7 +406,8 @@
                 { id: 'kpi-spartan-total-requests-card', key: 'spartanHourTotalRequests' },
                 { id: 'kpi-spartan-skipped-requests-card', key: 'spartanHourSkippedRequests' },
                 { id: 'kpi-spartan-high-priority-requests-card', key: 'spartanHourReqsHighPriority' },
-                { id: 'kpi-total-students-with-club-meetings-card', key: 'totalStudentsWithClubMeetings' }
+                { id: 'kpi-total-students-with-club-meetings-card', key: 'totalStudentsWithClubMeetings' },
+                { id: 'kpi-df-no-request-card', key: 'dfNoRequestCount' }
             ];
 
             kpiCardInfo.forEach(card => {

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OHS Academics & Attendance Dashboard (Mock)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Copy styles from index.html */
+        body { font-family: 'Inter', sans-serif; background-color: #2d3f89; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
+        .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .kpi-value { font-size: 2.5rem; font-weight: 700; color: #2d3f89; }
+        .kpi-label { font-size: 1rem; font-weight: 500; color: #4b5563; }
+        .ineligible-text { color: #ef4444; font-weight: 600; }
+        .eligible-text { color: #22c55e; font-weight: 600; }
+        .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #374151; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .filter-btn:hover { background-color: #f3f4f6; }
+        .filter-btn.active { background-color: #2d3f89; color: white; border-color: #2d3f89; }
+        select.filter-select {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em;
+            padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+            border-radius: 0.5rem; border: 1px solid #d1d5db;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        select.filter-select:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3); }
+        .fixed-table { table-layout: fixed; width: 100%; }
+        th[data-sort] { cursor: pointer; }
+        .sort-icon { color: #9ca3af; font-size: 0.9em; vertical-align: middle; }
+        .tooltip-trigger, .kpi-card.clickable { cursor: pointer; }
+        .header-title { text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5); }
+        .header-subtitle { text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4); }
+        /* Tooltip Styles */
+        #tooltip {
+            position: absolute; display: none;
+            background-color: #111827; color: white;
+            padding: 0.75rem; border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 0.875rem; max-width: 300px;
+            z-index: 1000;
+            transition: opacity 0.2s;
+        }
+        #tooltip h4 { font-weight: 600; margin-bottom: 0.5rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.5rem;}
+        #tooltip ul { list-style: none; padding-left: 0; }
+        #tooltip li { margin-top: 0.5rem; display: flex; justify-content: space-between; }
+        #tooltip li span:first-child { color: #d1d5db; padding-right: 1rem; }
+        .ineligible-row { background-color: #fee2e2; } /* Light red for ineligible students */
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+    <div id="tooltip"></div>
+
+    <div class="max-w-7xl mx-auto">
+         <header class="mb-8 text-center">
+            <h1 class="text-4xl font-extrabold text-white header-title tracking-tight">OHS Academics & Attendance Dashboard</h1>
+            <p class="text-gray-300 mt-2 header-subtitle">Visual analysis of student performance and attendance.</p>
+        </header>
+
+        <div id="loading-state" class="text-center py-16 bg-white rounded-lg">
+             <p class="mt-4 text-gray-600 font-medium">Loading and processing student data...</p>
+        </div>
+
+        <main id="dashboard-content" class="hidden">
+            <div class="mb-6 border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button id="tab-students" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-white border-white">Student List</button>
+                    <button id="tab-visuals" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Data Visualizations</button>
+                    <button id="tab-historical" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Historical Trends</button>
+                </nav>
+            </div>
+
+             <!-- VISUALS TAB CONTENT (Where the new card is) -->
+            <div id="tab-content-visuals">
+                 <div class="card mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Global Dashboard Filters</h2>
+                        <button id="reset-global-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                    </div>
+                    <div id="global-filters" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="grade-filter" class="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
+                            <select id="grade-filter" class="filter-select w-full"><option value="all">All Grades</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select>
+                        </div>
+                        <div>
+                            <label for="sped-filter" class="block text-sm font-medium text-gray-700 mb-1">Student Group</label>
+                            <select id="sped-filter" class="filter-select w-full"><option value="all">All Students</option><option value="sped">Special Education</option><option value="gened">General Education</option><option value="tier2">Tier 2</option></select>
+                        </div>
+                        <div>
+                            <label for="activity-filter" class="block text-sm font-medium text-gray-700 mb-1">Activity / Team</label>
+                            <select id="activity-filter" class="filter-select w-full"><option value="all">All Activities</option></select>
+                        </div>
+                    </div>
+                </div>
+
+                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                    <!-- Other KPI cards mock -->
+                    <div id="kpi-total-students-card" class="card kpi-card clickable" data-tooltip-key="totalStudents"><div id="total-students" class="kpi-value">0</div><div class="kpi-label">Total Students</div></div>
+
+                    <!-- THE NEW CARD -->
+                    <div id="kpi-df-no-request-card" class="card kpi-card clickable" data-tooltip-key="dfNoRequestCount"><div id="df-no-request-count" class="kpi-value">0</div><div class="kpi-label">D/F Students - No SH Request</div></div>
+                </div>
+                <!-- Mock charts area -->
+                <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Absence Breakdown by Type</h2><div class="chart-container"><canvas id="attendance-breakdown-chart"></canvas></div></div>
+            </div>
+
+             <div id="tab-content-students" class="hidden"></div>
+             <div id="tab-content-historical" class="hidden"></div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script>
+        // Mock global variables
+        const USER_ROLE = 'ADMIN';
+        let allStudentData = [];
+        let dfNoRequestData = null;
+        const tooltip = document.getElementById('tooltip');
+
+        let baselineKPIs = {};
+        let globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
+
+        // Mock Google Script Run
+        const google = {
+            script: {
+                run: {
+                    withSuccessHandler: function(callback) {
+                        return {
+                            withFailureHandler: function(errCallback) {
+                                return {
+                                    getStudentData: function() {
+                                        setTimeout(() => {
+                                            // Mock Data: 20 students total.
+                                            // 5 are DF No Request.
+                                            // 3 are Grade 9, 2 are Grade 10.
+                                            const students = [];
+                                            for (let i=0; i<20; i++) {
+                                                const isDF = i < 5;
+                                                students.push({
+                                                    studentName: `Student ${i}`,
+                                                    grade: isDF ? (i < 3 ? 9 : 10) : 11,
+                                                    caseManager: i === 0, // 1 SPED student
+                                                    activity: 'Football',
+                                                    isDFNoRequest: isDF,
+                                                    totalAbsences: i,
+                                                    numFGrades: i % 2,
+                                                    ineligible: false
+                                                });
+                                            }
+                                            callback(students);
+                                        }, 500);
+                                    },
+                                    getDFNoRequestStats: function() {
+                                        setTimeout(() => {
+                                            // Mock Metadata Response
+                                            callback({
+                                                date: '11/27/2025'
+                                            });
+                                        }, 500);
+                                    },
+                                    getAnonymizedStudentData: function() { this.getStudentData(); }
+                                };
+                            }
+                        };
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            google.script.run
+                .withSuccessHandler(initializeDashboard)
+                .withFailureHandler(error => console.error(error))
+                .getStudentData();
+        });
+
+        function initializeDashboard(data) {
+            allStudentData = data;
+            baselineKPIs = calculateGroupKPIs(allStudentData);
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('dashboard-content').classList.remove('hidden');
+
+            setupTabs();
+            setupTooltips();
+            setupGlobalFilters();
+
+            google.script.run
+                .withSuccessHandler(updateDFCard)
+                .withFailureHandler(error => console.error("Error loading DF stats:", error))
+                .getDFNoRequestStats();
+
+            updateDashboard();
+        }
+
+        function calculateGroupKPIs(data) {
+            const totalStudents = data.length;
+            if (totalStudents === 0) return { totalStudents: 0, dfNoRequestCount: 0 };
+
+            const dfNoRequestCount = data.filter(s => s.isDFNoRequest).length;
+
+            return {
+                totalStudents: totalStudents,
+                dfNoRequestCount: dfNoRequestCount
+            };
+        }
+
+        function updateDashboard() {
+            let data = allStudentData;
+            if (globalFilters.grade !== 'all') data = data.filter(s => s.grade == globalFilters.grade);
+            // ... simplified filter logic for mock
+
+            renderKPIs(data);
+        }
+
+        function renderKPIs(data) {
+            const currentKPIs = calculateGroupKPIs(data);
+            document.getElementById('total-students').textContent = currentKPIs.totalStudents;
+            document.getElementById('df-no-request-count').textContent = currentKPIs.dfNoRequestCount;
+        }
+
+        function updateDFCard(data) {
+            dfNoRequestData = data;
+            if (data && data.date) {
+                 const label = document.querySelector('#kpi-df-no-request-card .kpi-label');
+                 if (label) {
+                     label.textContent = `D/F Students - No SH Request (${data.date})`;
+                 }
+            }
+        }
+
+        function setupTabs() {
+            // Simplified tabs
+            document.getElementById('tab-visuals').classList.add('text-white');
+        }
+
+        function setupGlobalFilters() {
+             document.getElementById('global-filters').addEventListener('change', e => {
+                const { id, value } = e.target;
+                if (id === 'grade-filter') globalFilters.grade = value;
+                updateDashboard();
+            });
+        }
+
+        function generateComparisonTooltip(kpiKey) {
+            // Simplified tooltip generator for mock verification
+            const currentData = allStudentData; // Simplified, ignoring filters for baseline
+            const currentKpi = calculateGroupKPIs(currentData)[kpiKey];
+
+            let tooltipHtml = `<h4>Comparison Breakdowns</h4><ul><li><span>Current Filter:</span> <strong>${currentKpi}</strong></li>`;
+            tooltipHtml += `<li><span>School-Wide:</span> <strong>${baselineKPIs[kpiKey]}</strong></li>`;
+            tooltipHtml += `</ul>`;
+            return tooltipHtml;
+        }
+
+        function setupTooltips() {
+            document.body.addEventListener('click', e => {
+                const kpiCard = e.target.closest('.kpi-card.clickable');
+
+                if (kpiCard) {
+                    e.stopPropagation();
+                    const triggerId = kpiCard.id;
+                    if (tooltip.style.display === 'block' && tooltip.dataset.triggerId === triggerId) {
+                        hideTooltip(); return;
+                    }
+
+                    const key = kpiCard.dataset.tooltipKey;
+                    if (key) {
+                         const html = generateComparisonTooltip(key);
+                         showTooltip(html, kpiCard, triggerId);
+                    }
+                } else if (tooltip.style.display === 'block') {
+                    hideTooltip();
+                }
+            });
+        }
+
+        function showTooltip(html, element, triggerId) {
+            tooltip.innerHTML = html;
+            tooltip.style.display = 'block';
+            tooltip.dataset.triggerId = triggerId;
+            const rect = element.getBoundingClientRect();
+            let top = rect.bottom + window.scrollY + 5;
+            let left = rect.left + window.scrollX;
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+            setTimeout(() => { tooltip.style.opacity = 1; }, 10);
+        }
+
+        function hideTooltip() {
+            tooltip.style.opacity = 0;
+            setTimeout(() => {
+                tooltip.style.display = 'none';
+                tooltip.removeAttribute('data-trigger-id');
+            }, 200);
+        }
+    </script>
+</body>
+</html>
