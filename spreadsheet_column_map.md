@@ -127,6 +127,36 @@ Tab name: Spartan Hour Rosters
 0 : A : Spartan Hour Teacher : Name (First Last)
 1 : B : Student Name : Name (Last, First)
 
+Tab name: D/F No Request
+0 : A : Spartan Hour Dates : String
+1 : B : 9/2/2025 : String
+2 : C : 9/4/2025 : String
+3 : D : 9/9/2025 : String
+4 : E : 9/11/2025 : String
+5 : F : 9/16/2025 : String
+6 : G : 9/18/2025 : String
+7 : H : 9/23/2025 : String
+8 : I : 9/25/2025 : String
+9 : J : 9/30/2025 : String
+10 : K : 10/2/2025 : String
+11 : L : 10/7/2025 : String
+12 : M : 10/9/2025 : String
+13 : N : 10/14/2025 : String
+14 : O : 10/16/2025 : String
+15 : P : 10/21/2025 : String
+16 : Q : 10/23/2025 : String
+17 : R : 10/28/2025 : String
+18 : S : 10/30/2025 : String
+19 : T : 11/4/2025 : String
+20 : U : 11/6/2025 : String
+21 : V : 11/11/2025 : String
+22 : W : 11/13/2025 : String
+23 : X : 11/18/2025 : String
+24 : Y : 11/20/2025 : String
+25 : Z : 11/25/2025 : String
+26 : AA : 11/27/2025 : String
+[Columns continue for every Tuesday and Thursday dates]
+
 Tab name: 
 0 : A :  : 
 1 : B :  : 
