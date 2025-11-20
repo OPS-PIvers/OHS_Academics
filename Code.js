@@ -820,11 +820,32 @@ function getUserRole() {
       const role = row[2];
 
       if (email && email.toString().toLowerCase().trim() === userEmail.toLowerCase().trim()) {
-        return {
+        const userInfo = {
           email: userEmail,
           name: name || '',
-          role: (role || '').toString().toUpperCase().trim()
+          role: (role || '').toString().toUpperCase().trim(),
+          isSpartanHourTeacher: false
         };
+
+        // Check if this user is also a Spartan Hour teacher
+        const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
+        if (hubSheet && userInfo.name) {
+           // Get the last row to define the range, assuming header is row 1
+           const lastHubRow = hubSheet.getLastRow();
+           if (lastHubRow > 1) {
+             // Column AE is index 31 (if A=1), but getValues is 0-indexed relative to range.
+             // Let's get just column AE (31st column).
+             const advisorRange = hubSheet.getRange(2, 31, lastHubRow - 1, 1);
+             const advisors = advisorRange.getValues();
+
+             const isSpartanTeacher = advisors.some(r => r[0] && r[0].toString().trim().toLowerCase() === userInfo.name.toLowerCase().trim());
+             if (isSpartanTeacher) {
+               userInfo.isSpartanHourTeacher = true;
+             }
+           }
+        }
+
+        return userInfo;
       }
     }
 
@@ -899,6 +920,7 @@ function doGet() {
   template.userRole = userInfo.role;
   template.userName = userInfo.name;
   template.userEmail = userInfo.email;
+  template.isSpartanHourTeacher = userInfo.isSpartanHourTeacher;
 
   return template.evaluate()
       .setTitle("OHS Academics & Attendance Dashboard")
@@ -991,9 +1013,9 @@ function getStudentData() {
 }
 
 /**
- * Returns anonymized student data for TEACHER role users.
- * Includes all data needed for charts/filtering but strips identifying information.
- * @returns {Object[]} An array of anonymized student data objects.
+ * Returns student data for TEACHER role users.
+ * Anonymizes data by default, but reveals PII for students assigned to the requesting Spartan Hour teacher.
+ * @returns {Object[]} An array of student data objects (mixed anonymized and PII).
  */
 function getAnonymizedStudentData() {
   try {
@@ -1014,8 +1036,8 @@ function getAnonymizedStudentData() {
       return [];
     }
 
-    // Fetch data from columns A-AD
-    const range = sheet.getRange(2, 1, lastRow - 1, 30);
+    // Fetch data from columns A-AE (31 columns now) to include Spartan Hour Advisor
+    const range = sheet.getRange(2, 1, lastRow - 1, 31);
     const values = range.getValues();
 
     const headers = [
@@ -1025,21 +1047,26 @@ function getAnonymizedStudentData() {
       "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
       "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
       "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
-      "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
+      "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks", "spartanHourAdvisor"
     ];
 
     const data = values
     .filter(row => row[1] && row[1].toString().trim() !== '') // Filter out rows with no student name BEFORE mapping
     .map((row, index) => {
       let obj = {};
+      // Check if the student is assigned to the current user (Spartan Hour Teacher)
+      // "spartanHourAdvisor" is at index 30 (31st column)
+      const advisorName = row[30];
+      const isMyStudent = userInfo.isSpartanHourTeacher && advisorName && advisorName.toString().trim().toLowerCase() === userInfo.name.toLowerCase().trim();
+
       headers.forEach((key, i) => {
         let value = row[i];
 
-        // Anonymize identifying fields
+        // Anonymize identifying fields UNLESS it's the teacher's Spartan Hour student
         if (key === 'studentName') {
-          obj[key] = 'Student ' + (index + 1);
+          obj[key] = isMyStudent ? value : 'Student ' + (index + 1);
         } else if (key === 'id') {
-          obj[key] = 0;
+           obj[key] = isMyStudent ? value : 0;
         } else if (key === 'caseManager') {
           // Keep as boolean indicator for SPED filtering
           obj[key] = value ? 'Yes' : '';
@@ -1056,6 +1083,7 @@ function getAnonymizedStudentData() {
       });
 
       obj.mostRecentSpartanHourRequest = '';
+      obj.isMySpartanHourStudent = isMyStudent; // Flag to filter on frontend
       return obj;
     });
 
