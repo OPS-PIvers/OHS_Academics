@@ -116,6 +116,11 @@ Tab name: Historical Data
 21 : V : Students with Tier 2 : Integer
 22 : W : Students with Special Ed : Integer
 
+Tab name: Staff Roles
+0 : A : Name : Text [First Last]
+1 : B : Email : first.last@orono.k12.mn.us
+2 : C : Role : "TEACHER", "ADMIN"
+
 Tab name: 
 0 : A :  : 
 1 : B :  : 
@@ -144,4 +149,3 @@ Tab name:
 24 : Y :  : 
 25 : Z :  : 
 26 : AA :  : 
-

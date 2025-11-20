@@ -186,19 +186,69 @@
     </div>
 
     <script>
+        // Role passed from server-side template
+        const USER_ROLE = '<?= userRole ?>';
+        const USER_NAME = '<?= userName ?>';
+        const USER_EMAIL = '<?= userEmail ?>';
+
         let allStudentData = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
         let baselineKPIs = {};
         let historicalData = null;
+        let aggregatedData = null;
         const tooltip = document.getElementById('tooltip');
 
-        document.addEventListener('DOMContentLoaded', () => google.script.run.withSuccessHandler(initializeDashboard).withFailureHandler(handleError).getStudentData());
+        document.addEventListener('DOMContentLoaded', () => {
+            // Apply role-based UI restrictions before loading data
+            applyRoleBasedUI();
+
+            if (USER_ROLE === 'ADMIN') {
+                // ADMIN: Full access with individual student data
+                google.script.run
+                    .withSuccessHandler(initializeDashboard)
+                    .withFailureHandler(handleError)
+                    .getStudentData();
+            } else if (USER_ROLE === 'TEACHER') {
+                // TEACHER: Anonymized data for full visualizations without student details
+                google.script.run
+                    .withSuccessHandler(initializeDashboard)
+                    .withFailureHandler(handleError)
+                    .getAnonymizedStudentData();
+            } else {
+                // Unknown role - show error
+                document.getElementById('loading-state').innerHTML = `
+                    <div class="text-center">
+                        <p class="text-red-600 font-semibold">Access Error</p>
+                        <p class="text-gray-600 mt-2">Your role "${USER_ROLE}" is not recognized.</p>
+                        <p class="text-gray-500 text-sm mt-1">Please contact an administrator.</p>
+                    </div>
+                `;
+            }
+        });
+
+        function applyRoleBasedUI() {
+            if (USER_ROLE === 'TEACHER') {
+                // Hide Student List and Historical Trends tabs for TEACHERs
+                document.getElementById('tab-students').style.display = 'none';
+                document.getElementById('tab-historical').style.display = 'none';
+
+                // Remove active styling from Student List tab (default)
+                const tabStudents = document.getElementById('tab-students');
+                tabStudents.classList.remove('text-white', 'border-white');
+                tabStudents.classList.add('text-gray-400', 'border-transparent');
+
+                // Set Data Visualizations as default active tab
+                const tabVisuals = document.getElementById('tab-visuals');
+                tabVisuals.classList.add('text-white', 'border-white');
+                tabVisuals.classList.remove('text-gray-400', 'border-transparent');
+            }
+        }
         
         function initializeDashboard(data) {
             allStudentData = data;
             baselineKPIs = calculateGroupKPIs(allStudentData);
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
-            
+
             populateFilters();
             setupGlobalFilters();
             setupStudentListFilters();
@@ -206,10 +256,16 @@
             setupTooltips();
             setupClearButtons();
             setupTabs();
-            
+
             updateDashboard();
             applyStudentListFilters();
             updateSortIcons();
+
+            // For TEACHERs, show Data Visualizations tab content by default
+            if (USER_ROLE === 'TEACHER') {
+                document.getElementById('tab-content-students').classList.add('hidden');
+                document.getElementById('tab-content-visuals').classList.remove('hidden');
+            }
         }
 
         function setupTabs() {
