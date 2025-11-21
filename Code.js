@@ -800,6 +800,7 @@ function getUserRole() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // 1. Check Staff Roles sheet first
+    let userFromStaffRoles = null;
     const staffRolesSheet = ss.getSheetByName("Staff Roles");
     if (staffRolesSheet) {
       const lastRow = staffRolesSheet.getLastRow();
@@ -810,11 +811,12 @@ function getUserRole() {
           const email = row[1];
           const role = row[2];
           if (email && email.toString().toLowerCase().trim() === userEmail.toLowerCase().trim()) {
-            return {
+            userFromStaffRoles = {
               email: userEmail,
               name: name || '',
               role: (role || '').toString().toUpperCase().trim()
             };
+            break;
           }
         }
       }
@@ -822,7 +824,7 @@ function getUserRole() {
       Logger.log("Staff Roles sheet not found");
     }
 
-    // 2. If not in Staff Roles, check if they are a counselor in Admin Settings
+    // 2. If user is COUNSELOR (from Staff Roles or Admin Settings), look up their alpha range
     const adminSheet = ss.getSheetByName("Admin Settings");
     if (adminSheet) {
       const lastRow = adminSheet.getLastRow();
@@ -842,16 +844,21 @@ function getUserRole() {
             const nextCounselor = counselors[i + 1];
             return {
               email: userEmail,
-              name: counselor.name || '',
+              name: userFromStaffRoles ? userFromStaffRoles.name : (counselor.name || ''),
               role: 'COUNSELOR',
               alphaStart: counselor.alphaStart.toString().trim(),
-              alphaEnd: nextCounselor ? nextCounselor.alphaStart.toString().trim() : 'ZZZ' // End of alphabet
+              alphaEnd: nextCounselor ? nextCounselor.alphaStart.toString().trim() : 'ZZZ'
             };
           }
         }
       }
     } else {
       Logger.log("Admin Settings sheet not found for counselor lookup.");
+    }
+
+    // Return user from Staff Roles if found (non-counselor roles like ADMIN, TEACHER)
+    if (userFromStaffRoles) {
+      return userFromStaffRoles;
     }
 
     return null; // User not found in either sheet
