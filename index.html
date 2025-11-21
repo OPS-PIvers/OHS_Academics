@@ -199,7 +199,7 @@
         let USER_EMAIL = '<?= userEmail ?>';
         let USER_ALPHA_START = '';
         let USER_ALPHA_END = '';
-        let allStudentData = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all', counselorGroup: 'my' };
+        let allStudentData = [], allStudentsAnonymized = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all', counselorGroup: 'my' };
         let baselineKPIs = {};
         let historicalData = null;
         let aggregatedData = null;
@@ -244,7 +244,7 @@
         }
         
         function initializeDashboard(response) {
-            const { user, students, aggregatedStats } = response;
+            const { user, students, aggregatedStats, allStudentsAnonymized: anonymizedData } = response;
 
             // Set global user variables from the detailed object
             USER_ROLE = user.role;
@@ -274,7 +274,15 @@
 
             // Normal flow for ADMIN/COUNSELOR with student data
             allStudentData = students;
-            baselineKPIs = calculateGroupKPIs(allStudentData);
+
+            // Store anonymized full-school data for counselors
+            if (anonymizedData) {
+                allStudentsAnonymized = anonymizedData;
+                // Use anonymized data for school-wide baseline KPIs
+                baselineKPIs = calculateGroupKPIs(allStudentsAnonymized);
+            } else {
+                baselineKPIs = calculateGroupKPIs(allStudentData);
+            }
 
             populateFilters();
             setupGlobalFilters();
@@ -287,14 +295,6 @@
             updateDashboard();
             applyStudentListFilters();
             updateSortIcons();
-
-            // Fetch aggregated stats for counselors (for "All Students" view)
-            if (USER_ROLE === 'COUNSELOR') {
-                google.script.run
-                    .withSuccessHandler(data => { aggregatedData = data; })
-                    .withFailureHandler(err => console.error('Failed to load aggregated stats:', err))
-                    .getAggregatedStatsForCounselors();
-            }
         }
 
         function setupTabs() {
@@ -380,19 +380,15 @@
         }
         
         function updateDashboard() {
-            // Counselor viewing "All Students" uses pre-computed aggregated data
+            // Select base dataset based on counselor toggle
+            let data;
             if (USER_ROLE === 'COUNSELOR' && globalFilters.counselorGroup === 'all') {
-                if (!aggregatedData) {
-                    console.log('Aggregated data not yet loaded');
-                    return;
-                }
-                renderKPIsFromAggregated(aggregatedData.kpis);
-                renderChartsFromAggregated(aggregatedData.chartData);
-                return;
+                // Use anonymized full-school data
+                data = [...allStudentsAnonymized];
+            } else {
+                // Use alpha students (or all students for ADMIN)
+                data = [...allStudentData];
             }
-
-            // Normal flow: filter student data and render
-            let data = allStudentData;
 
             if (globalFilters.grade !== 'all') data = data.filter(s => s.grade == globalFilters.grade);
             if (globalFilters.sped === 'sped') data = data.filter(s => s.caseManager);

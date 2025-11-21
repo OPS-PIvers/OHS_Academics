@@ -1029,8 +1029,10 @@ function getStudentDataForWebApp() {
         studentData = getStudentData(); // This already has an internal Admin check
         break;
       case 'COUNSELOR':
-        // Filter to counselor's alpha range - individual student data is restricted
+        // Get all students for anonymized full-school view
         const allStudents = _getAllStudentData();
+
+        // Filter to counselor's alpha range (with names)
         studentData = allStudents.filter(student => {
           const lastName = student.studentName.split(',')[0].trim();
           if (!lastName) return false;
@@ -1038,7 +1040,24 @@ function getStudentDataForWebApp() {
           const isBeforeEnd = lastName.localeCompare(userInfo.alphaEnd, 'en', { sensitivity: 'base' }) < 0;
           return isAfterStart && isBeforeEnd;
         });
-        break;
+
+        // Create anonymized version of all students for "All Students" view
+        const anonymizedAllStudents = allStudents.map((student, index) => ({
+          ...student,
+          studentName: 'Student ' + (index + 1),
+          id: 0,
+          caseManager: student.caseManager ? 'Yes' : '',
+          tier2Instructor: student.tier2Instructor ? 'Yes' : '',
+          failingClasses: '',
+          tier2Interventions: student.tier2Interventions ? 'Yes' : '',
+          mostRecentSpartanHourRequest: ''
+        }));
+
+        return {
+          user: userInfo,
+          students: studentData,
+          allStudentsAnonymized: anonymizedAllStudents
+        };
       case 'TEACHER':
         // Teachers get aggregated stats only - no individual student data
         const aggregated = getAggregatedStats();
