@@ -789,46 +789,72 @@ function sendCounselorSummaryEmails() {
 
 
 /**
- * Gets the current user's role from the Staff Roles sheet.
- * @returns {Object|null} User info {email, name, role} or null if not found.
+ * Gets the current user's role by checking Staff Roles and then Admin Settings for counselors.
+ * @returns {Object|null} User info {email, name, role, alphaStart, alphaEnd} or null if not found.
  */
 function getUserRole() {
   try {
     const userEmail = Session.getActiveUser().getEmail();
-    if (!userEmail) {
-      return null;
-    }
+    if (!userEmail) return null;
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName("Staff Roles");
-    if (!sheet) {
-      Logger.log("Staff Roles sheet not found");
-      return null;
-    }
 
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return null;
-    }
-
-    // Columns: A = Name, B = Email, C = Role
-    const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-
-    for (const row of data) {
-      const name = row[0];
-      const email = row[1];
-      const role = row[2];
-
-      if (email && email.toString().toLowerCase().trim() === userEmail.toLowerCase().trim()) {
-        return {
-          email: userEmail,
-          name: name || '',
-          role: (role || '').toString().toUpperCase().trim()
-        };
+    // 1. Check Staff Roles sheet first
+    const staffRolesSheet = ss.getSheetByName("Staff Roles");
+    if (staffRolesSheet) {
+      const lastRow = staffRolesSheet.getLastRow();
+      if (lastRow >= 2) {
+        const data = staffRolesSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+        for (const row of data) {
+          const name = row[0];
+          const email = row[1];
+          const role = row[2];
+          if (email && email.toString().toLowerCase().trim() === userEmail.toLowerCase().trim()) {
+            return {
+              email: userEmail,
+              name: name || '',
+              role: (role || '').toString().toUpperCase().trim()
+            };
+          }
+        }
       }
+    } else {
+      Logger.log("Staff Roles sheet not found");
     }
 
-    return null;
+    // 2. If not in Staff Roles, check if they are a counselor in Admin Settings
+    const adminSheet = ss.getSheetByName("Admin Settings");
+    if (adminSheet) {
+      const lastRow = adminSheet.getLastRow();
+      if (lastRow >= 2) {
+        // Counselors: Name (F), Email (G), Alpha Start (H)
+        const counselorRange = adminSheet.getRange("F2:H" + lastRow).getValues();
+        const counselors = counselorRange.map(row => ({
+          name: row[0], email: row[1], alphaStart: row[2]
+        })).filter(c => c.name && c.email && c.alphaStart);
+
+        // Determine alpha ranges
+        counselors.sort((a, b) => a.alphaStart.localeCompare(b.alphaStart));
+
+        for (let i = 0; i < counselors.length; i++) {
+          const counselor = counselors[i];
+          if (counselor.email && counselor.email.toString().toLowerCase().trim() === userEmail.toLowerCase().trim()) {
+            const nextCounselor = counselors[i + 1];
+            return {
+              email: userEmail,
+              name: counselor.name || '',
+              role: 'COUNSELOR',
+              alphaStart: counselor.alphaStart.toString().trim(),
+              alphaEnd: nextCounselor ? nextCounselor.alphaStart.toString().trim() : 'ZZZ' // End of alphabet
+            };
+          }
+        }
+      }
+    } else {
+      Logger.log("Admin Settings sheet not found for counselor lookup.");
+    }
+
+    return null; // User not found in either sheet
   } catch (e) {
     Logger.log("Error in getUserRole: " + e.message);
     return null;
@@ -906,6 +932,261 @@ function doGet() {
 }
 
 /**
+ * Centralized function to fetch and process all student data from the hub.
+ * This is a private helper function; it does not perform role checks.
+ * @returns {Object[]} An array of student data objects.
+ */
+function _getAllStudentData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("⭐Academics & Attendance Hub");
+  if (!sheet) {
+    throw new Error("Sheet '⭐Academics & Attendance Hub' not found.");
+  }
+
+  // Get Spartan Hour Data
+  const spartanHourSheet = ss.getSheetByName("Spartan Hour Intervention");
+  const spartanHourData = new Map();
+  if (spartanHourSheet) {
+    const lastRow = spartanHourSheet.getLastRow();
+    if (lastRow >= 2) {
+      // Columns: C (Student Name), H (Requests)
+      const range = spartanHourSheet.getRange("C2:H" + lastRow).getValues();
+      range.forEach(row => {
+        const studentName = row[0]; // Col C
+        const requests = row[5]; // Col H
+        if (studentName && requests) {
+          const mostRecentRequest = requests.toString().split(/\n|,/)[0].trim();
+          spartanHourData.set(studentName.trim().toLowerCase(), mostRecentRequest);
+        }
+      });
+    }
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return []; // No data if there are no students
+  }
+
+  // Fetch data from column A (1) to AD (30) to include all necessary fields
+  const range = sheet.getRange(2, 1, lastRow - 1, 30);
+  const values = range.getValues();
+
+  const headers = [
+    "ineligible", "studentName", "grade", "id", "caseManager", "activity",
+    "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
+    "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
+    "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
+    "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
+    "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
+    "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
+  ];
+
+  const data = values.map(row => {
+    let obj = {};
+    headers.forEach((key, i) => {
+      let value = row[i];
+      // Perform necessary type conversions for charts and display
+      if (['ineligible', 'isFailing'].includes(key)) {
+        obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
+      } else if (['grade', 'id', 'unservedDetention', 'totalDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
+        const parsedValue = parseInt(value, 10);
+        obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
+      } else {
+        obj[key] = value;
+      }
+    });
+    // Add most recent spartan hour request
+    obj.mostRecentSpartanHourRequest = spartanHourData.get(obj.studentName.trim().toLowerCase()) || '';
+    return obj;
+  }).filter(student => student.studentName); // Filter out any rows that might be empty
+
+  return data;
+}
+
+/**
+ * Main data provider for the web application.
+ * Determines the user's role and returns the appropriate data set.
+ * @returns {Object} An object containing user info and student data.
+ */
+function getStudentDataForWebApp() {
+  try {
+    const userInfo = getUserRole();
+    if (!userInfo) {
+      throw new Error("Access Denied: You are not authorized to view this application.");
+    }
+
+    let studentData;
+
+    switch (userInfo.role) {
+      case 'ADMIN':
+        studentData = getStudentData(); // This already has an internal Admin check
+        break;
+      case 'COUNSELOR':
+        // Filter to counselor's alpha range - individual student data is restricted
+        const allStudents = _getAllStudentData();
+        studentData = allStudents.filter(student => {
+          const lastName = student.studentName.split(',')[0].trim();
+          if (!lastName) return false;
+          const isAfterStart = lastName.localeCompare(userInfo.alphaStart, 'en', { sensitivity: 'base' }) >= 0;
+          const isBeforeEnd = lastName.localeCompare(userInfo.alphaEnd, 'en', { sensitivity: 'base' }) < 0;
+          return isAfterStart && isBeforeEnd;
+        });
+        break;
+      case 'TEACHER':
+        // Teachers get aggregated stats only - no individual student data
+        const aggregated = getAggregatedStats();
+        return {
+          user: userInfo,
+          aggregatedStats: aggregated
+        };
+      default:
+        // Default to aggregated data for any other unforeseen roles
+        const defaultAggregated = getAggregatedStats();
+        return {
+          user: userInfo,
+          aggregatedStats: defaultAggregated
+        };
+    }
+
+    return {
+      user: userInfo,
+      students: studentData
+    };
+
+  } catch (e) {
+    Logger.log("Error in getStudentDataForWebApp: " + e.message);
+    throw new Error("A server-side error occurred while fetching data: " + e.message);
+  }
+}
+
+/**
+ * Returns aggregated statistics for all students (no individual data).
+ * Used by counselors for "All Students" view and teachers for Data Visualizations.
+ * @returns {Object} Aggregated stats for KPIs and charts.
+ */
+function getAggregatedStats() {
+  try {
+    const userInfo = getUserRole();
+    if (!userInfo || !['COUNSELOR', 'TEACHER'].includes(userInfo.role)) {
+      throw new Error("Access denied: COUNSELOR or TEACHER role required");
+    }
+
+    const allStudents = _getAllStudentData();
+
+    // Calculate aggregated statistics
+    const totalStudents = allStudents.length;
+    if (totalStudents === 0) {
+      return { kpis: {}, chartData: {} };
+    }
+
+    const ineligibleStudents = allStudents.filter(s => s.ineligible).length;
+    const totalAbsences = allStudents.reduce((sum, s) => sum + (s.totalAbsences || 0), 0);
+    const totalFGrades = allStudents.reduce((sum, s) => sum + (s.numFGrades || 0), 0);
+    const spartanHourTotalRequests = allStudents.reduce((sum, s) => sum + (s.spartanHourTotalRequests || 0), 0);
+    const spartanHourSkippedRequests = allStudents.reduce((sum, s) => sum + (s.spartanHourSkippedRequests || 0), 0);
+    const spartanHourReqsHighPriority = allStudents.reduce((sum, s) => sum + (s.spartanHourReqsHighPriority || 0), 0);
+    const studentsWithClubMeetings = allStudents.filter(s => s.totalClubMeetingsAttended > 0).length;
+
+    // Absence breakdown by type
+    const absenceBreakdown = {
+      unexcused: allStudents.reduce((sum, s) => sum + (s.unexcusedAbsences || 0), 0),
+      medical: allStudents.reduce((sum, s) => sum + (s.medicalAbsences || 0), 0),
+      illness: allStudents.reduce((sum, s) => sum + (s.illnessAbsences || 0), 0),
+      truancy: allStudents.reduce((sum, s) => sum + (s.truancyAbsences || 0), 0)
+    };
+
+    // Ineligibility reasons
+    const ineligibilityReasons = {
+      failing: allStudents.filter(s => s.ineligible && s.numFGrades > 0).length,
+      detention: allStudents.filter(s => s.ineligible && s.unservedDetention > 0).length,
+      both: allStudents.filter(s => s.ineligible && s.numFGrades > 0 && s.unservedDetention > 0).length
+    };
+
+    // Grade distribution for charts
+    const byGrade = {9: [], 10: [], 11: [], 12: []};
+    allStudents.forEach(s => {
+      if (byGrade[s.grade]) {
+        byGrade[s.grade].push({
+          numFGrades: s.numFGrades || 0,
+          totalAbsences: s.totalAbsences || 0,
+          ineligible: s.ineligible,
+          hasActivity: !!(s.activity && s.activity.trim()),
+          caseManager: !!s.caseManager,
+          totalClubMeetingsAttended: s.totalClubMeetingsAttended || 0
+        });
+      }
+    });
+
+    // Correlation data (absences by F grade count)
+    const correlationData = {};
+    allStudents.forEach(s => {
+      const fCount = s.numFGrades || 0;
+      if (!correlationData[fCount]) correlationData[fCount] = [];
+      correlationData[fCount].push(s.totalAbsences || 0);
+    });
+
+    // Activity vs non-activity comparison
+    const withActivity = allStudents.filter(s => s.activity && s.activity.trim());
+    const withoutActivity = allStudents.filter(s => !s.activity || !s.activity.trim());
+
+    return {
+      kpis: {
+        totalStudents,
+        ineligibleStudents,
+        ineligibilityRate: (ineligibleStudents / totalStudents) * 100,
+        avgAbsences: totalAbsences / totalStudents,
+        totalFGrades,
+        spartanHourTotalRequests,
+        spartanHourSkippedRequests,
+        spartanHourReqsHighPriority,
+        totalStudentsWithClubMeetings: studentsWithClubMeetings
+      },
+      chartData: {
+        absenceBreakdown,
+        ineligibilityReasons,
+        byGrade,
+        correlationData,
+        activityComparison: {
+          withActivity: {
+            count: withActivity.length,
+            avgAbsences: withActivity.length ? withActivity.reduce((sum, s) => sum + (s.totalAbsences || 0), 0) / withActivity.length : 0,
+            avgFGrades: withActivity.length ? withActivity.reduce((sum, s) => sum + (s.numFGrades || 0), 0) / withActivity.length : 0,
+            ineligibleRate: withActivity.length ? (withActivity.filter(s => s.ineligible).length / withActivity.length) * 100 : 0
+          },
+          withoutActivity: {
+            count: withoutActivity.length,
+            avgAbsences: withoutActivity.length ? withoutActivity.reduce((sum, s) => sum + (s.totalAbsences || 0), 0) / withoutActivity.length : 0,
+            avgFGrades: withoutActivity.length ? withoutActivity.reduce((sum, s) => sum + (s.numFGrades || 0), 0) / withoutActivity.length : 0,
+            ineligibleRate: withoutActivity.length ? (withoutActivity.filter(s => s.ineligible).length / withoutActivity.length) * 100 : 0
+          }
+        },
+        spartanHour: {
+          total: spartanHourTotalRequests,
+          skipped: spartanHourSkippedRequests,
+          highPriority: spartanHourReqsHighPriority,
+          completed: spartanHourTotalRequests - spartanHourSkippedRequests
+        },
+        clubsByGrade: {
+          9: byGrade[9].reduce((sum, s) => sum + s.totalClubMeetingsAttended, 0),
+          10: byGrade[10].reduce((sum, s) => sum + s.totalClubMeetingsAttended, 0),
+          11: byGrade[11].reduce((sum, s) => sum + s.totalClubMeetingsAttended, 0),
+          12: byGrade[12].reduce((sum, s) => sum + s.totalClubMeetingsAttended, 0)
+        }
+      }
+    };
+
+  } catch (e) {
+    Logger.log("Error in getAggregatedStats: " + e.message);
+    throw new Error("A server-side error occurred: " + e.message);
+  }
+}
+
+// Wrapper for backward compatibility
+function getAggregatedStatsForCounselors() {
+  return getAggregatedStats();
+}
+
+/**
  * Fetches and processes student data from the spreadsheet for the web app.
  * Requires ADMIN role to access individual student data.
  * @returns {Object[]} An array of student data objects.
@@ -918,71 +1199,8 @@ function getStudentData() {
       throw new Error("Access denied: ADMIN role required for student data");
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName("⭐Academics & Attendance Hub");
-    if (!sheet) {
-      throw new Error("Sheet '⭐Academics & Attendance Hub' not found.");
-    }
+    return _getAllStudentData();
 
-    // Get Spartan Hour Data
-    const spartanHourSheet = ss.getSheetByName("Spartan Hour Intervention");
-    const spartanHourData = new Map();
-    if (spartanHourSheet) {
-      const lastRow = spartanHourSheet.getLastRow();
-      if (lastRow >= 2) {
-        // Columns: C (Student Name), H (Requests)
-        const range = spartanHourSheet.getRange("C2:H" + lastRow).getValues();
-        range.forEach(row => {
-          const studentName = row[0]; // Col C
-          const requests = row[5]; // Col H
-          if (studentName && requests) {
-            const mostRecentRequest = requests.toString().split(/\n|,/)[0].trim();
-            spartanHourData.set(studentName.trim().toLowerCase(), mostRecentRequest);
-          }
-        });
-      }
-    }
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return []; // No data if there are no students
-    }
-    
-    // Fetch data from column A (1) to AD (30) to include all necessary fields
-    const range = sheet.getRange(2, 1, lastRow - 1, 30);
-    const values = range.getValues();
-
-    const headers = [
-      "ineligible", "studentName", "grade", "id", "caseManager", "activity",
-      "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
-      "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
-      "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
-      "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
-      "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
-      "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
-    ];
-
-    const data = values.map(row => {
-      let obj = {};
-      headers.forEach((key, i) => {
-        let value = row[i];
-        // Perform necessary type conversions for charts and display
-        if (['ineligible', 'isFailing'].includes(key)) {
-          obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
-        } else if (['grade', 'id', 'unservedDetention', 'totalDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
-          // Ensure that numbers are parsed correctly, defaulting to 0 if blank or non-numeric
-          const parsedValue = parseInt(value, 10);
-          obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
-        } else {
-          obj[key] = value;
-        }
-      });
-      // Add most recent spartan hour request
-      obj.mostRecentSpartanHourRequest = spartanHourData.get(obj.studentName.trim().toLowerCase()) || '';
-      return obj;
-    }).filter(student => student.studentName); // Filter out any rows that might be empty
-
-    return data;
   } catch (e) {
     Logger.log("Error in getStudentData: " + e.message);
     // Re-throw the error so the client-side failure handler can catch it

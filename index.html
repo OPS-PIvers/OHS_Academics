@@ -114,6 +114,13 @@
                             <label for="activity-filter" class="block text-sm font-medium text-gray-700 mb-1">Activity / Team</label>
                             <select id="activity-filter" class="filter-select w-full"><option value="all">All Activities</option></select>
                         </div>
+                        <div id="counselor-group-filter-container" class="hidden">
+                            <label for="counselor-group-filter" class="block text-sm font-medium text-gray-700 mb-1">My Caseload</label>
+                            <select id="counselor-group-filter" class="filter-select w-full">
+                                <option value="my">My Alpha Students</option>
+                                <option value="all">All Students</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -186,12 +193,13 @@
     </div>
 
     <script>
-        // Role passed from server-side template
-        const USER_ROLE = '<?= userRole ?>';
-        const USER_NAME = '<?= userName ?>';
-        const USER_EMAIL = '<?= userEmail ?>';
-
-        let allStudentData = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
+        // Role and user info will be populated from the server response
+        let USER_ROLE = '<?= userRole ?>'; // Initial role for UI setup
+        let USER_NAME = '<?= userName ?>';
+        let USER_EMAIL = '<?= userEmail ?>';
+        let USER_ALPHA_START = '';
+        let USER_ALPHA_END = '';
+        let allStudentData = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all', counselorGroup: 'my' };
         let baselineKPIs = {};
         let historicalData = null;
         let aggregatedData = null;
@@ -201,28 +209,11 @@
             // Apply role-based UI restrictions before loading data
             applyRoleBasedUI();
 
-            if (USER_ROLE === 'ADMIN') {
-                // ADMIN: Full access with individual student data
-                google.script.run
-                    .withSuccessHandler(initializeDashboard)
-                    .withFailureHandler(handleError)
-                    .getStudentData();
-            } else if (USER_ROLE === 'TEACHER') {
-                // TEACHER: Anonymized data for full visualizations without student details
-                google.script.run
-                    .withSuccessHandler(initializeDashboard)
-                    .withFailureHandler(handleError)
-                    .getAnonymizedStudentData();
-            } else {
-                // Unknown role - show error
-                document.getElementById('loading-state').innerHTML = `
-                    <div class="text-center">
-                        <p class="text-red-600 font-semibold">Access Error</p>
-                        <p class="text-gray-600 mt-2">Your role "${USER_ROLE}" is not recognized.</p>
-                        <p class="text-gray-500 text-sm mt-1">Please contact an administrator.</p>
-                    </div>
-                `;
-            }
+            // Single data-loading call for all roles
+            google.script.run
+                .withSuccessHandler(initializeDashboard)
+                .withFailureHandler(handleError)
+                .getStudentDataForWebApp();
         });
 
         function applyRoleBasedUI() {
@@ -241,13 +232,49 @@
                 tabVisuals.classList.add('text-white', 'border-white');
                 tabVisuals.classList.remove('text-gray-400', 'border-transparent');
             }
+
+            if (USER_ROLE === 'COUNSELOR') {
+                // Show the counselor caseload filter in Data Viz
+                document.getElementById('counselor-group-filter-container').classList.remove('hidden');
+                // Update grid to 4 columns to accommodate the new filter
+                const globalFiltersDiv = document.getElementById('global-filters');
+                globalFiltersDiv.classList.remove('md:grid-cols-3');
+                globalFiltersDiv.classList.add('md:grid-cols-4');
+            }
         }
         
-        function initializeDashboard(data) {
-            allStudentData = data;
-            baselineKPIs = calculateGroupKPIs(allStudentData);
+        function initializeDashboard(response) {
+            const { user, students, aggregatedStats } = response;
+
+            // Set global user variables from the detailed object
+            USER_ROLE = user.role;
+            USER_NAME = user.name;
+            USER_EMAIL = user.email;
+            USER_ALPHA_START = user.alphaStart || '';
+            USER_ALPHA_END = user.alphaEnd || '';
+
+            // Re-apply role-based UI now that we have full user info
+            applyRoleBasedUI();
+
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
+
+            // Handle aggregated-only data (TEACHER role)
+            if (aggregatedStats) {
+                aggregatedData = aggregatedStats;
+                setupTabs();
+                renderKPIsFromAggregated(aggregatedStats.kpis);
+                renderChartsFromAggregated(aggregatedStats.chartData);
+
+                // Show Data Viz tab by default for teachers
+                document.getElementById('tab-content-students').classList.add('hidden');
+                document.getElementById('tab-content-visuals').classList.remove('hidden');
+                return;
+            }
+
+            // Normal flow for ADMIN/COUNSELOR with student data
+            allStudentData = students;
+            baselineKPIs = calculateGroupKPIs(allStudentData);
 
             populateFilters();
             setupGlobalFilters();
@@ -261,10 +288,12 @@
             applyStudentListFilters();
             updateSortIcons();
 
-            // For TEACHERs, show Data Visualizations tab content by default
-            if (USER_ROLE === 'TEACHER') {
-                document.getElementById('tab-content-students').classList.add('hidden');
-                document.getElementById('tab-content-visuals').classList.remove('hidden');
+            // Fetch aggregated stats for counselors (for "All Students" view)
+            if (USER_ROLE === 'COUNSELOR') {
+                google.script.run
+                    .withSuccessHandler(data => { aggregatedData = data; })
+                    .withFailureHandler(err => console.error('Failed to load aggregated stats:', err))
+                    .getAggregatedStatsForCounselors();
             }
         }
 
@@ -345,18 +374,32 @@
                 if (id === 'grade-filter') globalFilters.grade = value;
                 if (id === 'sped-filter') globalFilters.sped = value;
                 if (id === 'activity-filter') globalFilters.activity = value;
+                if (id === 'counselor-group-filter') globalFilters.counselorGroup = value;
                 updateDashboard();
             });
         }
         
         function updateDashboard() {
+            // Counselor viewing "All Students" uses pre-computed aggregated data
+            if (USER_ROLE === 'COUNSELOR' && globalFilters.counselorGroup === 'all') {
+                if (!aggregatedData) {
+                    console.log('Aggregated data not yet loaded');
+                    return;
+                }
+                renderKPIsFromAggregated(aggregatedData.kpis);
+                renderChartsFromAggregated(aggregatedData.chartData);
+                return;
+            }
+
+            // Normal flow: filter student data and render
             let data = allStudentData;
+
             if (globalFilters.grade !== 'all') data = data.filter(s => s.grade == globalFilters.grade);
             if (globalFilters.sped === 'sped') data = data.filter(s => s.caseManager);
             if (globalFilters.sped === 'gened') data = data.filter(s => !s.caseManager);
             if (globalFilters.sped === 'tier2') data = data.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '');
             if (globalFilters.activity !== 'all') data = data.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(globalFilters.activity));
-            
+
             renderKPIs(data);
             renderCharts(data);
         }
@@ -520,7 +563,57 @@
                 }
             });
         }
-        
+
+        // Render KPIs from pre-computed aggregated data (for counselor "All Students" view)
+        function renderKPIsFromAggregated(kpis) {
+            document.getElementById('total-students').textContent = kpis.totalStudents;
+            document.getElementById('ineligible-students').textContent = kpis.ineligibleStudents;
+            document.getElementById('ineligibility-rate').textContent = `${kpis.ineligibilityRate.toFixed(1)}%`;
+            document.getElementById('avg-absences').textContent = kpis.avgAbsences.toFixed(1);
+            document.getElementById('total-f-grades').textContent = kpis.totalFGrades;
+            document.getElementById('spartan-total-requests').textContent = kpis.spartanHourTotalRequests;
+            document.getElementById('spartan-skipped-requests').textContent = kpis.spartanHourSkippedRequests;
+            document.getElementById('spartan-high-priority-requests').textContent = kpis.spartanHourReqsHighPriority;
+            document.getElementById('total-students-with-club-meetings').textContent = kpis.totalStudentsWithClubMeetings;
+        }
+
+        // Render charts from pre-computed aggregated data (for counselor "All Students" view)
+        function renderChartsFromAggregated(chartData) {
+            const chartColors = { blue: 'rgba(59, 130, 246, 0.7)', red: 'rgba(239, 68, 68, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)', purple: 'rgba(139, 92, 246, 0.7)', orange: 'rgba(249, 115, 22, 0.7)', gray: 'rgba(107, 114, 128, 0.7)' };
+            Object.values(charts).forEach(chart => chart.destroy());
+
+            // Attendance breakdown
+            const ab = chartData.absenceBreakdown;
+            charts.attendance = new Chart(document.getElementById('attendance-breakdown-chart'), { type: 'doughnut', data: { labels: ['Unexcused', 'Truancy', 'Medical', 'Illness'], datasets: [{ data: [ab.unexcused, ab.truancy, ab.medical, ab.illness], backgroundColor: [chartColors.yellow, chartColors.red, chartColors.blue, chartColors.green] }] }, options: { maintainAspectRatio: false, responsive: true } });
+
+            // Ineligibility reasons
+            const ir = chartData.ineligibilityReasons;
+            const failingOnly = ir.failing - ir.both;
+            const detentionOnly = ir.detention - ir.both;
+            charts.ineligibility = new Chart(document.getElementById('ineligibility-chart'), { type: 'doughnut', data: { labels: ['Failing Only', 'Detention Only', 'Both'], datasets: [{ data: [failingOnly, detentionOnly, ir.both], backgroundColor: [chartColors.red, chartColors.orange, chartColors.purple] }] }, options: { maintainAspectRatio: false, responsive: true } });
+
+            // Correlation chart
+            const correlationLabels = Object.keys(chartData.correlationData).sort((a, b) => a - b);
+            const correlationValues = correlationLabels.map(fCount => {
+                const absences = chartData.correlationData[fCount];
+                return absences.length ? absences.reduce((a, b) => a + b, 0) / absences.length : 0;
+            });
+            charts.correlation = new Chart(document.getElementById('correlation-chart'), { type: 'bar', data: { labels: correlationLabels.map(l => `${l} F's`), datasets: [{ label: 'Average Absences', data: correlationValues, backgroundColor: chartColors.blue }] }, options: { maintainAspectRatio: false, responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Average Absences (Periods)' } }, x: { title: { display: true, text: 'Number of Failing Grades' } } } } });
+
+            // Activity comparison
+            const ac = chartData.activityComparison;
+            charts.activity = new Chart(document.getElementById('activity-chart'), { type: 'bar', data: { labels: ['Ineligibility Rate (%)', 'Avg Absences (Periods)'], datasets: [{ label: `In Activity (${ac.withActivity.count})`, data: [ac.withActivity.ineligibleRate, ac.withActivity.avgAbsences], backgroundColor: chartColors.blue }, { label: `Not in Activity (${ac.withoutActivity.count})`, data: [ac.withoutActivity.ineligibleRate, ac.withoutActivity.avgAbsences], backgroundColor: chartColors.gray }] }, options: { maintainAspectRatio: false, responsive: true, scales: { y: { beginAtZero: true } } } });
+
+            // Spartan Hour chart
+            const sh = chartData.spartanHour;
+            charts.spartanHour = new Chart(document.getElementById('spartan-hour-chart'), { type: 'bar', data: { labels: ['Total Requests', 'Skipped Requests', 'High Priority Requests'], datasets: [{ label: 'Number of Requests', data: [sh.total, sh.skipped, sh.highPriority], backgroundColor: [chartColors.blue, chartColors.red, chartColors.yellow] }] }, options: { maintainAspectRatio: false, responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Requests' } }, x: { title: { display: true, text: 'Spartan Hour Metrics' } } } } });
+
+            // Club participation by grade
+            const grades = [9, 10, 11, 12];
+            const clubData = grades.map(g => chartData.byGrade[g].filter(s => s.totalClubMeetingsAttended > 0).length);
+            charts.clubMeetingsByGrade = new Chart(document.getElementById('club-meetings-by-grade-chart'), { type: 'bar', data: { labels: grades.map(g => `Grade ${g}`), datasets: [{ label: 'Number of Students Participating', data: clubData, backgroundColor: chartColors.green }] }, options: { maintainAspectRatio: false, responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Students' } }, x: { title: { display: true, text: 'Grade Level' } } } } });
+        }
+
         function setupStudentListFilters() {
             document.getElementById('student-search').addEventListener('keyup', e => { studentListFilters.search = e.target.value.toLowerCase(); applyStudentListFilters(); });
             document.getElementById('student-activity-filter').addEventListener('change', e => { studentListFilters.activity = e.target.value; applyStudentListFilters(); });
@@ -553,7 +646,9 @@
         }
 
         function applyStudentListFilters() {
+            // For counselors, allStudentData is already filtered by backend to their alpha range
             let data = [...allStudentData];
+
             if (studentListFilters.grade !== 'all') data = data.filter(s => s.grade == studentListFilters.grade);
             if (studentListFilters.activity !== 'all') data = data.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(studentListFilters.activity));
             if (studentListFilters.search) data = data.filter(s => s.studentName.toLowerCase().includes(studentListFilters.search));
@@ -678,7 +773,10 @@
                 document.getElementById('grade-filter').value = 'all';
                 document.getElementById('sped-filter').value = 'all';
                 document.getElementById('activity-filter').value = 'all';
-                globalFilters = { grade: 'all', sped: 'all', activity: 'all' };
+                if (USER_ROLE === 'COUNSELOR') {
+                    document.getElementById('counselor-group-filter').value = 'my';
+                }
+                globalFilters = { grade: 'all', sped: 'all', activity: 'all', counselorGroup: 'my' };
                 updateDashboard();
             });
 
