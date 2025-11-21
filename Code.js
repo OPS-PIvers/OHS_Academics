@@ -299,6 +299,89 @@ function getHistoricalDataForClient() {
   }
 }
 
+/**
+ * Internal helper to get data from the most recent D/F No Request session.
+ * @returns {Object|null} Object with { date: Date, formattedDate: String, names: Set<String> } or null.
+ */
+function getDFSessionDataInternal_() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("D/F No Request");
+
+    if (!sheet) return null;
+
+    const lastCol = sheet.getLastColumn();
+    if (lastCol < 2) return null;
+
+    // Row 1 has dates
+    const dateRowValues = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    let mostRecentDate = null;
+    let targetColIndex = -1;
+
+    // Find most recent past/today date
+    for (let i = 1; i < dateRowValues.length; i++) {
+      const cellValue = dateRowValues[i];
+      if (cellValue) {
+        const date = new Date(cellValue);
+        if (!isNaN(date.getTime()) && date <= today) {
+          if (!mostRecentDate || date > mostRecentDate) {
+            mostRecentDate = date;
+            targetColIndex = i + 1;
+          }
+        }
+      }
+    }
+
+    if (targetColIndex === -1) return null;
+
+    // Get students from Row 4 downwards
+    const lastRow = sheet.getLastRow();
+    let nameSet = new Set();
+    if (lastRow >= 4) {
+      const studentsRange = sheet.getRange(4, targetColIndex, lastRow - 3, 1);
+      const studentValues = studentsRange.getValues();
+      studentValues.flat().forEach(name => {
+        if (name && String(name).trim() !== "") {
+          nameSet.add(String(name).trim().toLowerCase());
+        }
+      });
+    }
+
+    return {
+      date: mostRecentDate,
+      formattedDate: Utilities.formatDate(mostRecentDate, Session.getScriptTimeZone(), "M/d/yyyy"),
+      names: nameSet
+    };
+
+  } catch (e) {
+    Logger.log(`Error in getDFSessionDataInternal_: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Fetches metadata for D/F students who did not receive a Spartan Hour request.
+ * Primarily returns the date of the most recent session found.
+ * @returns {Object} Object containing date.
+ */
+function getDFNoRequestStats() {
+  try {
+    const data = getDFSessionDataInternal_();
+    if (!data) {
+      return { date: null };
+    }
+    return {
+      date: data.formattedDate
+    };
+  } catch (e) {
+    Logger.log(`Error in getDFNoRequestStats: ${e.message}`);
+    return { date: null, error: e.message };
+  }
+}
+
 // ===============================================================
 // NEW CODE FOR TIER 2 INSTRUCTOR SUMMARY EMAILS
 // ===============================================================
@@ -943,6 +1026,9 @@ function getStudentData() {
       }
     }
 
+    // Get D/F No Request Data (most recent session)
+    const dfSessionData = getDFSessionDataInternal_();
+
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) {
       return []; // No data if there are no students
@@ -979,6 +1065,19 @@ function getStudentData() {
       });
       // Add most recent spartan hour request
       obj.mostRecentSpartanHourRequest = spartanHourData.get(obj.studentName.trim().toLowerCase()) || '';
+
+      // Add D/F No Request flag
+      // Normalize names for comparison (trim and lower case)
+      if (dfSessionData && dfSessionData.names) {
+        const normalizedName = obj.studentName.trim().toLowerCase();
+        // We need to check if the name exists in the set (which should also be normalized)
+        // Since sets are exact match, we'll iterate or ensure the set is normalized.
+        // Let's assume getDFSessionDataInternal_ returns normalized names.
+        obj.isDFNoRequest = dfSessionData.names.has(normalizedName);
+      } else {
+        obj.isDFNoRequest = false;
+      }
+
       return obj;
     }).filter(student => student.studentName); // Filter out any rows that might be empty
 
@@ -1009,6 +1108,9 @@ function getAnonymizedStudentData() {
       throw new Error("Sheet '⭐Academics & Attendance Hub' not found.");
     }
 
+    // Get D/F No Request Data (most recent session)
+    const dfSessionData = getDFSessionDataInternal_();
+
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) {
       return [];
@@ -1032,6 +1134,8 @@ function getAnonymizedStudentData() {
     .filter(row => row[1] && row[1].toString().trim() !== '') // Filter out rows with no student name BEFORE mapping
     .map((row, index) => {
       let obj = {};
+      const realName = row[1]; // Keep reference to real name for checking D/F list
+
       headers.forEach((key, i) => {
         let value = row[i];
 
@@ -1056,6 +1160,15 @@ function getAnonymizedStudentData() {
       });
 
       obj.mostRecentSpartanHourRequest = '';
+
+      // Add D/F No Request flag using the Real Name (before anonymization logic finishes)
+      if (dfSessionData && dfSessionData.names && realName) {
+        const normalizedName = realName.toString().trim().toLowerCase();
+        obj.isDFNoRequest = dfSessionData.names.has(normalizedName);
+      } else {
+        obj.isDFNoRequest = false;
+      }
+
       return obj;
     });
 
