@@ -234,6 +234,8 @@
             }
 
             if (USER_ROLE === 'COUNSELOR') {
+                // Hide Historical Trends tab for COUNSELORs
+                document.getElementById('tab-historical').style.display = 'none';
                 // Show the counselor caseload filter in Data Viz
                 document.getElementById('counselor-group-filter-container').classList.remove('hidden');
                 // Update grid to 4 columns to accommodate the new filter
@@ -445,8 +447,13 @@
 
             const { grade, sped, activity } = globalFilters;
             let comparisons = [];
-            
-            const currentData = allStudentData.filter(s => 
+
+            // Use the same data source logic as updateDashboard
+            const baseData = (USER_ROLE === 'COUNSELOR' && globalFilters.counselorGroup === 'all')
+                ? allStudentsAnonymized
+                : allStudentData;
+
+            const currentData = baseData.filter(s => 
                 (grade === 'all' || s.grade == grade) &&
                 (sped === 'all' || (sped === 'sped' ? s.caseManager : (sped === 'gened' ? !s.caseManager : (sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true)))) &&
                 (activity === 'all' || (s.activity || '').split(',').map(a => a.trim()).includes(activity))
@@ -454,16 +461,16 @@
             const currentKpi = calculateGroupKPIs(currentData)[kpiKey];
             
             if (grade !== 'all' && (sped !== 'all' || activity !== 'all')) {
-                const gradeAllSubgroupsData = allStudentData.filter(s => s.grade == grade);
+                const gradeAllSubgroupsData = baseData.filter(s => s.grade == grade);
                 comparisons.push({ label: `Grade ${grade} (All Students)`, value: calculateGroupKPIs(gradeAllSubgroupsData)[kpiKey] });
             }
             if (sped !== 'all' && (grade !== 'all' || activity !== 'all')) {
                  const spedLabel = sped === 'sped' ? 'SPED' : (sped === 'gened' ? 'GenEd' : 'Tier 2');
-                 const spedAllSubgroupsData = allStudentData.filter(s => (sped === 'sped' ? s.caseManager : (sped === 'gened' ? !s.caseManager : (sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true))));
+                 const spedAllSubgroupsData = baseData.filter(s => (sped === 'sped' ? s.caseManager : (sped === 'gened' ? !s.caseManager : (sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true))));
                  comparisons.push({ label: `${spedLabel} (All Grades)`, value: calculateGroupKPIs(spedAllSubgroupsData)[kpiKey] });
             }
              if (activity !== 'all' && (grade !== 'all' || sped !== 'all')) {
-                const activityAllSubgroupsData = allStudentData.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(activity));
+                const activityAllSubgroupsData = baseData.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(activity));
                 comparisons.push({ label: `${activity} (All Groups)`, value: calculateGroupKPIs(activityAllSubgroupsData)[kpiKey] });
             }
 
