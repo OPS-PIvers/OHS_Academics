@@ -258,6 +258,12 @@
             // Re-apply role-based UI now that we have full user info
             applyRoleBasedUI();
 
+            // Explicitly set default view for TEACHER role
+            if (USER_ROLE === 'TEACHER') {
+                document.getElementById('tab-content-students').classList.add('hidden');
+                document.getElementById('tab-content-visuals').classList.remove('hidden');
+            }
+
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
 
