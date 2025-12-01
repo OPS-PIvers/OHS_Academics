@@ -1059,11 +1059,11 @@ function getStudentDataForWebApp() {
           allStudentsAnonymized: anonymizedAllStudents
         };
       case 'TEACHER':
-        // Teachers get aggregated stats only - no individual student data
-        const aggregated = getAggregatedStats();
+        // Teachers get anonymized student data to allow for client-side filtering and visualization
+        const teacherData = getAnonymizedStudentData();
         return {
           user: userInfo,
-          aggregatedStats: aggregated
+          students: teacherData
         };
       default:
         // Default to aggregated data for any other unforeseen roles
