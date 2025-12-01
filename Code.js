@@ -1042,7 +1042,14 @@ function getStudentDataForWebApp() {
         });
 
         // Create anonymized version of all students for "All Students" view
-        const anonymizedAllStudents = allStudents.map((student, index) => ({
+        // Clone and shuffle to ensure anonymity
+        const studentsToAnonymize = [...allStudents];
+        for (let i = studentsToAnonymize.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [studentsToAnonymize[i], studentsToAnonymize[j]] = [studentsToAnonymize[j], studentsToAnonymize[i]];
+        }
+
+        const anonymizedAllStudents = studentsToAnonymize.map((student, index) => ({
           ...student,
           studentName: 'Student ' + (index + 1),
           id: 0,
@@ -1272,9 +1279,16 @@ function getAnonymizedStudentData() {
       "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
     ];
 
-    const data = values
-    .filter(row => row[1] && row[1].toString().trim() !== '') // Filter out rows with no student name BEFORE mapping
-    .map((row, index) => {
+    // Filter out rows with no student name
+    let filteredValues = values.filter(row => row[1] && row[1].toString().trim() !== '');
+
+    // Shuffle the filtered values using Fisher-Yates algorithm to ensure anonymity
+    for (let i = filteredValues.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filteredValues[i], filteredValues[j]] = [filteredValues[j], filteredValues[i]];
+    }
+
+    const data = filteredValues.map((row, index) => {
       let obj = {};
       headers.forEach((key, i) => {
         let value = row[i];
