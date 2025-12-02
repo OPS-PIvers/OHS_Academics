@@ -133,6 +133,7 @@
                     <div id="kpi-spartan-total-requests-card" class="card kpi-card"><div id="spartan-total-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Total Requests</div></div>
                     <div id="kpi-spartan-skipped-requests-card" class="card kpi-card"><div id="spartan-skipped-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Skipped Requests</div></div>
                     <div id="kpi-spartan-high-priority-requests-card" class="card kpi-card"><div id="spartan-high-priority-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour High Priority Requests</div></div>
+                    <div id="kpi-df-no-request-card" class="card kpi-card"><div id="df-no-request" class="kpi-value">0</div><div class="kpi-label">D/F List No Request</div></div>
                     <div id="kpi-total-students-with-club-meetings-card" class="card kpi-card"><div id="total-students-with-club-meetings" class="kpi-value">0</div><div class="kpi-label">Club Participation</div></div>
                 </div>
 
@@ -350,6 +351,7 @@
             const spartanHourTotalRequests = data.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0);
             const spartanHourSkippedRequests = data.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0);
             const spartanHourReqsHighPriority = data.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0);
+            const dfNoRequestCount = data.filter(s => s.isOnDFNoRequestList).length;
 
             return {
                 totalStudents: totalStudents,
@@ -360,7 +362,8 @@
                 spartanHourTotalRequests: spartanHourTotalRequests,
                 spartanHourSkippedRequests: spartanHourSkippedRequests,
                 spartanHourReqsHighPriority: spartanHourReqsHighPriority,
-                totalStudentsWithClubMeetings: data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length
+                totalStudentsWithClubMeetings: data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length,
+                dfNoRequestCount: dfNoRequestCount
             };
         }
 
@@ -420,6 +423,7 @@
             document.getElementById('spartan-total-requests').textContent = currentKPIs.spartanHourTotalRequests;
             document.getElementById('spartan-skipped-requests').textContent = currentKPIs.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = currentKPIs.spartanHourReqsHighPriority;
+            document.getElementById('df-no-request').textContent = currentKPIs.dfNoRequestCount;
             document.getElementById('total-students-with-club-meetings').textContent = currentKPIs.totalStudentsWithClubMeetings;
 
             const kpiCardInfo = [
@@ -431,13 +435,14 @@
                 { id: 'kpi-spartan-total-requests-card', key: 'spartanHourTotalRequests' },
                 { id: 'kpi-spartan-skipped-requests-card', key: 'spartanHourSkippedRequests' },
                 { id: 'kpi-spartan-high-priority-requests-card', key: 'spartanHourReqsHighPriority' },
+                { id: 'kpi-df-no-request-card', key: 'dfNoRequestCount' },
                 { id: 'kpi-total-students-with-club-meetings-card', key: 'totalStudentsWithClubMeetings' }
             ];
 
             kpiCardInfo.forEach(card => {
                 const cardEl = document.getElementById(card.id);
                 cardEl.classList.remove('clickable');
-                if (filtersActive) {
+                if (filtersActive || card.key === 'dfNoRequestCount') {
                     cardEl.classList.add('clickable');
                     cardEl.dataset.tooltipKey = card.key;
                 }
@@ -583,6 +588,7 @@
             document.getElementById('spartan-total-requests').textContent = kpis.spartanHourTotalRequests;
             document.getElementById('spartan-skipped-requests').textContent = kpis.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = kpis.spartanHourReqsHighPriority;
+            document.getElementById('df-no-request').textContent = kpis.dfNoRequestCount || 0;
             document.getElementById('total-students-with-club-meetings').textContent = kpis.totalStudentsWithClubMeetings;
         }
 
@@ -702,6 +708,18 @@
                         hideTooltip(); return;
                     }
                     const key = kpiCard.dataset.tooltipKey;
+                    
+                    if (key === 'dfNoRequestCount') {
+                        const { grade, sped, activity } = globalFilters;
+                        const baseData = (USER_ROLE === 'COUNSELOR' && globalFilters.counselorGroup === 'all') ? allStudentsAnonymized : allStudentData;
+                        const currentData = baseData.filter(s => (grade === 'all' || s.grade == grade) && (sped === 'all' || (sped === 'sped' ? s.caseManager : (sped === 'gened' ? !s.caseManager : (sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true)))) && (activity === 'all' || (s.activity || '').split(',').map(a => a.trim()).includes(activity)));
+                        const noReq = currentData.filter(s => s.isOnDFNoRequestList);
+                        const withF = noReq.filter(s => s.numFGrades > 0).length;
+                        const withD = noReq.length - withF;
+                        showTooltip(`<h4>D/F No Request Breakdown</h4><ul><li><span>Total:</span> <strong>${noReq.length}</strong></li><li><span>With Fs:</span> <strong class="text-red-500">${withF}</strong></li><li><span>With Ds:</span> <strong class="text-yellow-500">${withD}</strong></li></ul>`, kpiCard, triggerId);
+                        return;
+                    }
+
                     const html = generateComparisonTooltip(key);
                     showTooltip(html, kpiCard, triggerId);
                 } else if (studentCell) {

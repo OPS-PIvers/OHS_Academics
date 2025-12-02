@@ -939,6 +939,54 @@ function doGet() {
 }
 
 /**
+ * Helper function to get the list of students on the D/F list with no Spartan Hour request
+ * for the most recent date with data.
+ * @returns {Set<string>} A Set of normalized student names (lowercase, trimmed).
+ */
+function getDFNoRequestNames() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("D/F No Request");
+    if (!sheet) return new Set();
+
+    const lastCol = sheet.getLastColumn();
+    if (lastCol < 2) return new Set();
+
+    // Get headers (Row 1) and Counts (Row 2)
+    const headerRange = sheet.getRange(1, 2, 2, lastCol - 1); // B1:End2
+    const headerValues = headerRange.getValues();
+    const dates = headerValues[0];
+    const counts = headerValues[1];
+
+    let targetIndex = -1;
+    // Iterate backwards to find the most recent date with data (count > 0)
+    for (let i = dates.length - 1; i >= 0; i--) {
+      // Check if date exists and count is a positive number
+      if (dates[i] && typeof counts[i] === 'number' && counts[i] > 0) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    if (targetIndex === -1) return new Set();
+
+    const columnIndex = targetIndex + 2; // Adjust for 1-based index (A=1, B=2, etc.)
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 3) return new Set();
+
+    // Get student names from Row 3 down
+    const nameRange = sheet.getRange(3, columnIndex, lastRow - 2, 1);
+    const names = nameRange.getValues().flat();
+    
+    // Normalize names for comparison
+    return new Set(names.filter(String).map(n => n.trim().toLowerCase()));
+  } catch (e) {
+    Logger.log(`Error in getDFNoRequestNames: ${e.message}`);
+    return new Set();
+  }
+}
+
+/**
  * Centralized function to fetch and process all student data from the hub.
  * This is a private helper function; it does not perform role checks.
  * @returns {Object[]} An array of student data objects.
@@ -949,6 +997,9 @@ function _getAllStudentData() {
   if (!sheet) {
     throw new Error("Sheet '⭐Academics & Attendance Hub' not found.");
   }
+
+  // Get "D/F No Request" List
+  const dfNoRequestNames = getDFNoRequestNames();
 
   // Get Spartan Hour Data
   const spartanHourSheet = ss.getSheetByName("Spartan Hour Intervention");
@@ -1004,6 +1055,10 @@ function _getAllStudentData() {
     });
     // Add most recent spartan hour request
     obj.mostRecentSpartanHourRequest = spartanHourData.get(obj.studentName.trim().toLowerCase()) || '';
+    
+    // Add D/F No Request status
+    obj.isOnDFNoRequestList = dfNoRequestNames.has(obj.studentName.trim().toLowerCase());
+    
     return obj;
   }).filter(student => student.studentName); // Filter out any rows that might be empty
 
@@ -1119,6 +1174,9 @@ function getAggregatedStats() {
     const spartanHourSkippedRequests = allStudents.reduce((sum, s) => sum + (s.spartanHourSkippedRequests || 0), 0);
     const spartanHourReqsHighPriority = allStudents.reduce((sum, s) => sum + (s.spartanHourReqsHighPriority || 0), 0);
     const studentsWithClubMeetings = allStudents.filter(s => s.totalClubMeetingsAttended > 0).length;
+    
+    // New KPI: D/F List No Request
+    const dfNoRequestCount = allStudents.filter(s => s.isOnDFNoRequestList).length;
 
     // Absence breakdown by type
     const absenceBreakdown = {
@@ -1172,7 +1230,8 @@ function getAggregatedStats() {
         spartanHourTotalRequests,
         spartanHourSkippedRequests,
         spartanHourReqsHighPriority,
-        totalStudentsWithClubMeetings: studentsWithClubMeetings
+        totalStudentsWithClubMeetings: studentsWithClubMeetings,
+        dfNoRequestCount
       },
       chartData: {
         absenceBreakdown,
@@ -1279,6 +1338,9 @@ function getAnonymizedStudentData() {
       "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
     ];
 
+    // Get "D/F No Request" List
+    const dfNoRequestNames = getDFNoRequestNames();
+
     // Filter out rows with no student name
     let filteredValues = values.filter(row => row[1] && row[1].toString().trim() !== '');
 
@@ -1312,6 +1374,11 @@ function getAnonymizedStudentData() {
           obj[key] = value;
         }
       });
+      
+      // Add D/F No Request status (check against real name in row[1] BEFORE it was anonymized in obj)
+      // Note: 'row' is the shuffled array, so row[1] is the real name for this anonymized student.
+      const realName = row[1];
+      obj.isOnDFNoRequestList = dfNoRequestNames.has(realName.trim().toLowerCase());
 
       obj.mostRecentSpartanHourRequest = '';
       return obj;
