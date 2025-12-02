@@ -987,6 +987,44 @@ function getDFNoRequestNames() {
 }
 
 /**
+ * Helper function to get the date of the most recent D/F list with no Spartan Hour request.
+ * @returns {string} The date string or "N/A" if not found.
+ */
+function getDFNoRequestDate() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("D/F No Request");
+    if (!sheet) return "N/A";
+
+    const lastCol = sheet.getLastColumn();
+    if (lastCol < 2) return "N/A";
+
+    // Get headers (Row 1) and Counts (Row 2)
+    const headerRange = sheet.getRange(1, 2, 2, lastCol - 1); // B1:End2
+    const headerValues = headerRange.getValues();
+    const dates = headerValues[0];
+    const counts = headerValues[1];
+
+    // Iterate backwards to find the most recent date with data (count > 0)
+    for (let i = dates.length - 1; i >= 0; i--) {
+      // Check if date exists and count is a positive number
+      if (dates[i] && typeof counts[i] === 'number' && counts[i] > 0) {
+        const date = dates[i];
+        if (date instanceof Date) {
+             return Utilities.formatDate(date, Session.getScriptTimeZone(), "MM/dd/yyyy");
+        }
+        return String(date);
+      }
+    }
+
+    return "N/A";
+  } catch (e) {
+    Logger.log(`Error in getDFNoRequestDate: ${e.message}`);
+    return "N/A";
+  }
+}
+
+/**
  * Centralized function to fetch and process all student data from the hub.
  * This is a private helper function; it does not perform role checks.
  * @returns {Object[]} An array of student data objects.
@@ -1077,6 +1115,7 @@ function getStudentDataForWebApp() {
       throw new Error("Access Denied: You are not authorized to view this application.");
     }
 
+    const dfNoRequestDate = getDFNoRequestDate();
     let studentData;
 
     switch (userInfo.role) {
@@ -1118,14 +1157,16 @@ function getStudentDataForWebApp() {
         return {
           user: userInfo,
           students: studentData,
-          allStudentsAnonymized: anonymizedAllStudents
+          allStudentsAnonymized: anonymizedAllStudents,
+          dfNoRequestDate: dfNoRequestDate
         };
       case 'TEACHER':
         // Teachers get anonymized student data to allow for client-side filtering and visualization
         const teacherData = getAnonymizedStudentData();
         return {
           user: userInfo,
-          students: teacherData
+          students: teacherData,
+          dfNoRequestDate: dfNoRequestDate
         };
       default:
         // Default to aggregated data for any other unforeseen roles
@@ -1138,7 +1179,8 @@ function getStudentDataForWebApp() {
 
     return {
       user: userInfo,
-      students: studentData
+      students: studentData,
+      dfNoRequestDate: dfNoRequestDate
     };
 
   } catch (e) {
@@ -1177,6 +1219,7 @@ function getAggregatedStats() {
     
     // New KPI: D/F List No Request
     const dfNoRequestCount = allStudents.filter(s => s.isOnDFNoRequestList).length;
+    const dfNoRequestDate = getDFNoRequestDate();
 
     // Absence breakdown by type
     const absenceBreakdown = {
@@ -1231,7 +1274,8 @@ function getAggregatedStats() {
         spartanHourSkippedRequests,
         spartanHourReqsHighPriority,
         totalStudentsWithClubMeetings: studentsWithClubMeetings,
-        dfNoRequestCount
+        dfNoRequestCount,
+        dfNoRequestDate
       },
       chartData: {
         absenceBreakdown,

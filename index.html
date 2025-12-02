@@ -133,7 +133,7 @@
                     <div id="kpi-spartan-total-requests-card" class="card kpi-card"><div id="spartan-total-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Total Requests</div></div>
                     <div id="kpi-spartan-skipped-requests-card" class="card kpi-card"><div id="spartan-skipped-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Skipped Requests</div></div>
                     <div id="kpi-spartan-high-priority-requests-card" class="card kpi-card"><div id="spartan-high-priority-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour High Priority Requests</div></div>
-                    <div id="kpi-df-no-request-card" class="card kpi-card"><div id="df-no-request" class="kpi-value">0</div><div class="kpi-label">D/F List No Request</div></div>
+                    <div id="kpi-df-no-request-card" class="card kpi-card"><div id="df-no-request" class="kpi-value">0</div><div id="df-no-request-label" class="kpi-label">D/F List No Request</div></div>
                     <div id="kpi-total-students-with-club-meetings-card" class="card kpi-card"><div id="total-students-with-club-meetings" class="kpi-value">0</div><div class="kpi-label">Club Participation</div></div>
                 </div>
 
@@ -200,6 +200,7 @@
         let USER_EMAIL = '<?= userEmail ?>';
         let USER_ALPHA_START = '';
         let USER_ALPHA_END = '';
+        let dfNoRequestDate = 'N/A';
         let allStudentData = [], allStudentsAnonymized = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all', counselorGroup: 'my' };
         let baselineKPIs = {};
         let historicalData = null;
@@ -255,6 +256,10 @@
             USER_EMAIL = user.email;
             USER_ALPHA_START = user.alphaStart || '';
             USER_ALPHA_END = user.alphaEnd || '';
+
+            if (response.dfNoRequestDate) {
+                dfNoRequestDate = response.dfNoRequestDate;
+            }
 
             // Re-apply role-based UI now that we have full user info
             applyRoleBasedUI();
@@ -424,6 +429,7 @@
             document.getElementById('spartan-skipped-requests').textContent = currentKPIs.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = currentKPIs.spartanHourReqsHighPriority;
             document.getElementById('df-no-request').textContent = currentKPIs.dfNoRequestCount;
+            document.getElementById('df-no-request-label').textContent = `D/F List No Request (${dfNoRequestDate})`;
             document.getElementById('total-students-with-club-meetings').textContent = currentKPIs.totalStudentsWithClubMeetings;
 
             const kpiCardInfo = [
@@ -589,6 +595,9 @@
             document.getElementById('spartan-skipped-requests').textContent = kpis.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = kpis.spartanHourReqsHighPriority;
             document.getElementById('df-no-request').textContent = kpis.dfNoRequestCount || 0;
+            if (kpis.dfNoRequestDate) {
+                document.getElementById('df-no-request-label').textContent = `D/F List No Request (${kpis.dfNoRequestDate})`;
+            }
             document.getElementById('total-students-with-club-meetings').textContent = kpis.totalStudentsWithClubMeetings;
         }
 
