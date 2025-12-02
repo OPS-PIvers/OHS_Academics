@@ -987,17 +987,17 @@ function getDFNoRequestNames() {
 }
 
 /**
- * Helper function to get the date of the most recent D/F list with no Spartan Hour request.
- * @returns {string} The date string or "N/A" if not found.
+ * Helper function to get the date and count of the most recent D/F list with no Spartan Hour request.
+ * @returns {Object} Object with {date: string, count: number} or {date: "N/A", count: 0} if not found.
  */
 function getDFNoRequestDate() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName("D/F No Request");
-    if (!sheet) return "N/A";
+    if (!sheet) return { date: "N/A", count: 0 };
 
     const lastCol = sheet.getLastColumn();
-    if (lastCol < 2) return "N/A";
+    if (lastCol < 2) return { date: "N/A", count: 0 };
 
     // Get headers (Row 1) and Counts (Row 2)
     const headerRange = sheet.getRange(1, 2, 2, lastCol - 1); // B1:End2
@@ -1010,17 +1010,18 @@ function getDFNoRequestDate() {
       // Check if date exists and count is a positive number
       if (dates[i] && typeof counts[i] === 'number' && counts[i] > 0) {
         const date = dates[i];
-        if (date instanceof Date) {
-             return Utilities.formatDate(date, Session.getScriptTimeZone(), "MM/dd/yyyy");
-        }
-        return String(date);
+        const count = counts[i];
+        const formattedDate = (date instanceof Date)
+          ? Utilities.formatDate(date, Session.getScriptTimeZone(), "MM/dd/yyyy")
+          : String(date);
+        return { date: formattedDate, count: count };
       }
     }
 
-    return "N/A";
+    return { date: "N/A", count: 0 };
   } catch (e) {
     Logger.log(`Error in getDFNoRequestDate: ${e.message}`);
-    return "N/A";
+    return { date: "N/A", count: 0 };
   }
 }
 
@@ -1115,7 +1116,7 @@ function getStudentDataForWebApp() {
       throw new Error("Access Denied: You are not authorized to view this application.");
     }
 
-    const dfNoRequestDate = getDFNoRequestDate();
+    const dfNoRequestInfo = getDFNoRequestDate();
     let studentData;
 
     switch (userInfo.role) {
@@ -1158,7 +1159,8 @@ function getStudentDataForWebApp() {
           user: userInfo,
           students: studentData,
           allStudentsAnonymized: anonymizedAllStudents,
-          dfNoRequestDate: dfNoRequestDate
+          dfNoRequestDate: dfNoRequestInfo.date,
+          dfNoRequestCount: dfNoRequestInfo.count
         };
       case 'TEACHER':
         // Teachers get anonymized student data to allow for client-side filtering and visualization
@@ -1166,7 +1168,8 @@ function getStudentDataForWebApp() {
         return {
           user: userInfo,
           students: teacherData,
-          dfNoRequestDate: dfNoRequestDate
+          dfNoRequestDate: dfNoRequestInfo.date,
+          dfNoRequestCount: dfNoRequestInfo.count
         };
       default:
         // Default to aggregated data for any other unforeseen roles
@@ -1180,7 +1183,8 @@ function getStudentDataForWebApp() {
     return {
       user: userInfo,
       students: studentData,
-      dfNoRequestDate: dfNoRequestDate
+      dfNoRequestDate: dfNoRequestInfo.date,
+      dfNoRequestCount: dfNoRequestInfo.count
     };
 
   } catch (e) {
@@ -1217,9 +1221,10 @@ function getAggregatedStats() {
     const spartanHourReqsHighPriority = allStudents.reduce((sum, s) => sum + (s.spartanHourReqsHighPriority || 0), 0);
     const studentsWithClubMeetings = allStudents.filter(s => s.totalClubMeetingsAttended > 0).length;
     
-    // New KPI: D/F List No Request
-    const dfNoRequestCount = allStudents.filter(s => s.isOnDFNoRequestList).length;
-    const dfNoRequestDate = getDFNoRequestDate();
+    // New KPI: D/F List No Request - use actual count from sheet
+    const dfNoRequestInfo = getDFNoRequestDate();
+    const dfNoRequestCount = dfNoRequestInfo.count; // Use actual count from Row 2 of sheet
+    const dfNoRequestDate = dfNoRequestInfo.date;
 
     // Absence breakdown by type
     const absenceBreakdown = {

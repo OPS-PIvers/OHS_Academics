@@ -201,6 +201,7 @@
         let USER_ALPHA_START = '';
         let USER_ALPHA_END = '';
         let dfNoRequestDate = 'N/A';
+        let dfNoRequestCount = 0;
         let allStudentData = [], allStudentsAnonymized = [], charts = {}, studentListFilters = { search: '', grade: 'all', eligibility: 'all', activity: 'all' }, studentListSort = { key: 'studentName', order: 'asc' }, globalFilters = { grade: 'all', sped: 'all', activity: 'all', counselorGroup: 'my' };
         let baselineKPIs = {};
         let historicalData = null;
@@ -259,6 +260,9 @@
 
             if (response.dfNoRequestDate) {
                 dfNoRequestDate = response.dfNoRequestDate;
+            }
+            if (typeof response.dfNoRequestCount !== 'undefined') {
+                dfNoRequestCount = response.dfNoRequestCount;
             }
 
             // Re-apply role-based UI now that we have full user info
@@ -349,14 +353,13 @@
         function calculateGroupKPIs(data) {
             const totalStudents = data.length;
             if (totalStudents === 0) return { totalStudents: 0, ineligibleStudents: 0, ineligibilityRate: 0, avgAbsences: 0, totalFGrades: 0, spartanHourTotalRequests: 0, spartanHourSkippedRequests: 0, spartanHourReqsHighPriority: 0, totalStudentsWithClubMeetings: 0 };
-            
+
             const ineligibleStudents = data.filter(s => s.ineligible).length;
             const totalAbsences = data.reduce((sum, s) => sum + s.totalAbsences, 0);
             const totalFGrades = data.reduce((sum, s) => sum + s.numFGrades, 0);
             const spartanHourTotalRequests = data.reduce((sum, s) => sum + s.spartanHourTotalRequests, 0);
             const spartanHourSkippedRequests = data.reduce((sum, s) => sum + s.spartanHourSkippedRequests, 0);
             const spartanHourReqsHighPriority = data.reduce((sum, s) => sum + s.spartanHourReqsHighPriority, 0);
-            const dfNoRequestCount = data.filter(s => s.isOnDFNoRequestList).length;
 
             return {
                 totalStudents: totalStudents,
@@ -367,8 +370,7 @@
                 spartanHourTotalRequests: spartanHourTotalRequests,
                 spartanHourSkippedRequests: spartanHourSkippedRequests,
                 spartanHourReqsHighPriority: spartanHourReqsHighPriority,
-                totalStudentsWithClubMeetings: data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length,
-                dfNoRequestCount: dfNoRequestCount
+                totalStudentsWithClubMeetings: data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length
             };
         }
 
@@ -428,7 +430,7 @@
             document.getElementById('spartan-total-requests').textContent = currentKPIs.spartanHourTotalRequests;
             document.getElementById('spartan-skipped-requests').textContent = currentKPIs.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = currentKPIs.spartanHourReqsHighPriority;
-            document.getElementById('df-no-request').textContent = currentKPIs.dfNoRequestCount;
+            document.getElementById('df-no-request').textContent = dfNoRequestCount; // Use global count from sheet
             document.getElementById('df-no-request-label').textContent = `D/F List No Request (${dfNoRequestDate})`;
             document.getElementById('total-students-with-club-meetings').textContent = currentKPIs.totalStudentsWithClubMeetings;
 
@@ -448,6 +450,7 @@
             kpiCardInfo.forEach(card => {
                 const cardEl = document.getElementById(card.id);
                 cardEl.classList.remove('clickable');
+                // Always make D/F No Request card clickable since it shows breakdown
                 if (filtersActive || card.key === 'dfNoRequestCount') {
                     cardEl.classList.add('clickable');
                     cardEl.dataset.tooltipKey = card.key;
@@ -719,13 +722,12 @@
                     const key = kpiCard.dataset.tooltipKey;
                     
                     if (key === 'dfNoRequestCount') {
-                        const { grade, sped, activity } = globalFilters;
+                        // Use ALL unfiltered students to calculate the accurate F vs D breakdown
                         const baseData = (USER_ROLE === 'COUNSELOR' && globalFilters.counselorGroup === 'all') ? allStudentsAnonymized : allStudentData;
-                        const currentData = baseData.filter(s => (grade === 'all' || s.grade == grade) && (sped === 'all' || (sped === 'sped' ? s.caseManager : (sped === 'gened' ? !s.caseManager : (sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true)))) && (activity === 'all' || (s.activity || '').split(',').map(a => a.trim()).includes(activity)));
-                        const noReq = currentData.filter(s => s.isOnDFNoRequestList);
+                        const noReq = baseData.filter(s => s.isOnDFNoRequestList);
                         const withF = noReq.filter(s => s.numFGrades > 0).length;
                         const withD = noReq.length - withF;
-                        showTooltip(`<h4>D/F No Request Breakdown</h4><ul><li><span>Total:</span> <strong>${noReq.length}</strong></li><li><span>With Fs:</span> <strong class="text-red-500">${withF}</strong></li><li><span>With Ds:</span> <strong class="text-yellow-500">${withD}</strong></li></ul>`, kpiCard, triggerId);
+                        showTooltip(`<h4>D/F No Request Breakdown</h4><ul><li><span>Total:</span> <strong>${dfNoRequestCount}</strong></li><li><span>With Fs:</span> <strong class="text-red-500">${withF}</strong></li><li><span>With Ds:</span> <strong class="text-yellow-500">${withD}</strong></li></ul>`, kpiCard, triggerId);
                         return;
                     }
 
