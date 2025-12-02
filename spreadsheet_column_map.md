@@ -141,31 +141,21 @@ ROW 2:
 2 : C : [Sum of all cells with names in the remainder of the column rows below this cell] : Integer
 [Columns continue for every date column from row 1]
 
-Tab name: 
-0 : A :  : 
-1 : B :  : 
-2 : C :  : 
-3 : D :  : 
-4 : E :  :  
-5 : F :  :  
-6 : G :  :  
-7 : H :  : 
-8 : I :  :  
-9 : J :  :  
-10 : K :  :  
-11 : L :  :  
-12 : M :  :  
-13 : N :  :  
-14 : O :  : 
-15 : P :  : 
-16 : Q :  : 
-17 : R :  : 
-18 : S :  : 
-19 : T :  : 
-20 : U :  : 
-21 : V :  : 
-22 : W :  : 
-23 : X :  : 
-24 : Y :  : 
-25 : Z :  : 
-26 : AA :  : 
+Tab name: F List
+0 : A : Grade : Integer
+1 : B : Student name : String [Last, First]
+2 : C : Perm ID : Integer
+3 : D : Per : Integer
+4 : E : Course Title : String
+5 : F : Staff Name : String [Last, F.] 
+6 : G : Mark : Letter ["F"] 
+7 : H : Calc. % : Percentage ["47"]
+
+Tab name: Helper_Import
+0 : A : Student Name : String [Last, First M.] 
+1 : B : Student ID : Integer
+2 : C : Course : String
+3 : D : Teacher : String [Last, F.]
+4 : E : Letter Grade : Letter ["D" or "F"] 
+5 : F : Spartan Hour (Tuesday) : Date [M/DD/YYYY]   
+6 : G : Spartan Hour (Thursday) : Date [M/DD/YYYY] 

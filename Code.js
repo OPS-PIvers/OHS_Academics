@@ -939,9 +939,38 @@ function doGet() {
 }
 
 /**
+ * Helper function to generate a consistent name key for comparison.
+ * Handles "Last, First" and "First Last" formats, ignoring middle names/initials.
+ * @param {string} name - The name to normalize.
+ * @returns {string} The normalized key "lastname|firstname".
+ */
+function generateNameKey(name) {
+  if (!name) return '';
+  name = name.toString().toLowerCase().trim();
+  
+  let last, first;
+  
+  if (name.includes(',')) {
+    // Assumes "Last, First Middle" or "Last, First"
+    const parts = name.split(',');
+    last = parts[0].trim();
+    const firstParts = parts[1].trim().split(/\s+/);
+    first = firstParts[0].trim(); // Take only the first word of the first name section
+  } else {
+    // Assumes "First Middle Last" or "First Last"
+    const parts = name.split(/\s+/);
+    if (parts.length === 1) return parts[0]; // Mononym
+    last = parts[parts.length - 1];
+    first = parts[0];
+  }
+  
+  return `${last}|${first}`;
+}
+
+/**
  * Helper function to get the list of students on the D/F list with no Spartan Hour request
  * for the most recent date with data.
- * @returns {Set<string>} A Set of normalized student names (lowercase, trimmed).
+ * @returns {Set<string>} A Set of normalized student name keys.
  */
 function getDFNoRequestNames() {
   try {
@@ -978,8 +1007,13 @@ function getDFNoRequestNames() {
     const nameRange = sheet.getRange(3, columnIndex, lastRow - 2, 1);
     const names = nameRange.getValues().flat();
     
-    // Normalize names for comparison
-    return new Set(names.filter(String).map(n => n.trim().toLowerCase()));
+    // Normalize names using the robust key generator
+    const nameSet = new Set();
+    names.filter(String).forEach(n => {
+      nameSet.add(generateNameKey(n));
+    });
+    
+    return nameSet;
   } catch (e) {
     Logger.log(`Error in getDFNoRequestNames: ${e.message}`);
     return new Set();
@@ -1096,7 +1130,7 @@ function _getAllStudentData() {
     obj.mostRecentSpartanHourRequest = spartanHourData.get(obj.studentName.trim().toLowerCase()) || '';
     
     // Add D/F No Request status
-    obj.isOnDFNoRequestList = dfNoRequestNames.has(obj.studentName.trim().toLowerCase());
+    obj.isOnDFNoRequestList = dfNoRequestNames.has(generateNameKey(obj.studentName));
     
     return obj;
   }).filter(student => student.studentName); // Filter out any rows that might be empty
@@ -1427,7 +1461,7 @@ function getAnonymizedStudentData() {
       // Add D/F No Request status (check against real name in row[1] BEFORE it was anonymized in obj)
       // Note: 'row' is the shuffled array, so row[1] is the real name for this anonymized student.
       const realName = row[1];
-      obj.isOnDFNoRequestList = dfNoRequestNames.has(realName.trim().toLowerCase());
+      obj.isOnDFNoRequestList = dfNoRequestNames.has(generateNameKey(realName));
 
       obj.mostRecentSpartanHourRequest = '';
       return obj;

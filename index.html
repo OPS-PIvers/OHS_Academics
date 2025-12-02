@@ -430,8 +430,12 @@
             document.getElementById('spartan-total-requests').textContent = currentKPIs.spartanHourTotalRequests;
             document.getElementById('spartan-skipped-requests').textContent = currentKPIs.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = currentKPIs.spartanHourReqsHighPriority;
-            document.getElementById('df-no-request').textContent = dfNoRequestCount; // Use global count from sheet
+            
+            // Calculate D/F No Request count from the filtered data
+            const dfListCount = data.filter(s => s.isOnDFNoRequestList).length;
+            document.getElementById('df-no-request').textContent = dfListCount;
             document.getElementById('df-no-request-label').textContent = `D/F List No Request (${dfNoRequestDate})`;
+            
             document.getElementById('total-students-with-club-meetings').textContent = currentKPIs.totalStudentsWithClubMeetings;
 
             const kpiCardInfo = [
@@ -722,12 +726,22 @@
                     const key = kpiCard.dataset.tooltipKey;
                     
                     if (key === 'dfNoRequestCount') {
-                        // Use ALL unfiltered students to calculate the accurate F vs D breakdown
-                        const baseData = (USER_ROLE === 'COUNSELOR' && globalFilters.counselorGroup === 'all') ? allStudentsAnonymized : allStudentData;
-                        const noReq = baseData.filter(s => s.isOnDFNoRequestList);
+                        // Use the same filtering logic as updateDashboard to respect current global filters
+                        let currentData = (USER_ROLE === 'COUNSELOR' && globalFilters.counselorGroup === 'all') ? allStudentsAnonymized : allStudentData;
+                        
+                        // Apply filters
+                        if (globalFilters.grade !== 'all') currentData = currentData.filter(s => s.grade == globalFilters.grade);
+                        if (globalFilters.sped === 'sped') currentData = currentData.filter(s => s.caseManager);
+                        if (globalFilters.sped === 'gened') currentData = currentData.filter(s => !s.caseManager);
+                        if (globalFilters.sped === 'tier2') currentData = currentData.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '');
+                        if (globalFilters.activity !== 'all') currentData = currentData.filter(s => (s.activity || '').split(',').map(a => a.trim()).includes(globalFilters.activity));
+
+                        const noReq = currentData.filter(s => s.isOnDFNoRequestList);
+                        const total = noReq.length;
                         const withF = noReq.filter(s => s.numFGrades > 0).length;
-                        const withD = noReq.length - withF;
-                        showTooltip(`<h4>D/F No Request Breakdown</h4><ul><li><span>Total:</span> <strong>${dfNoRequestCount}</strong></li><li><span>With Fs:</span> <strong class="text-red-500">${withF}</strong></li><li><span>With Ds:</span> <strong class="text-yellow-500">${withD}</strong></li></ul>`, kpiCard, triggerId);
+                        const withD = total - withF;
+                        
+                        showTooltip(`<h4>D/F No Request Breakdown</h4><ul><li><span>Total:</span> <strong>${total}</strong></li><li><span>With Fs:</span> <strong class="text-red-500">${withF}</strong></li><li><span>With Ds:</span> <strong class="text-yellow-500">${withD}</strong></li></ul>`, kpiCard, triggerId);
                         return;
                     }
 
