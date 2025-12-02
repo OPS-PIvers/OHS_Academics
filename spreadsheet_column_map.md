@@ -83,15 +83,16 @@ Tab name: Absences (total)
 10 : K : SpHr : Number (0)
 
 Tab name: Attendance Letters
-0 : A : NAME (Last, First): Text
-1 : B : L1 : Date (MM/DD/YY)
-2 : C : l2 : Date (MM/DD/YY)
-3 : D : Dr Note Req : Date (MM/DD/YY)
-4 : E : L3 : Date (MM/DD/YY)
-5 : F : BASIL : Date (MM/DD/YY)
-6 : G : BASIL 2 : Date (MM/DD/YY)
-7 : H : [BLANK] :
-8 : I : Med Note List as of [MM/DD] ("Last, First"):  Text
+0 : A : NAME : Text [this cleans the name from column B to match the hub column B names exactly]
+1 : B : NAME [Imported] : Text (Last, First)
+2 : C : L1 : Date (MM/DD/YY)
+3 : D : L2 : Date (MM/DD/YY)
+4 : E : Dr Note Req : Date (MM/DD/YY)
+5 : F : L3 : Date (MM/DD/YY)
+6 : G : BASIL : Date (MM/DD/YY)
+7 : H : BASIL 2 : Date (MM/DD/YY)
+8 : I : [BLANK] :
+9 : J : Med Note List ("Last, First"): Text
 
 Tab name: Historical Data
 0 : A : Snapshot Date : Date
