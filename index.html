@@ -547,7 +547,7 @@
             });
 
             // New Club Participation by Grade Chart
-            const gradesForClubParticipation = [...new Set(data.map(s => s.grade))].sort((a, b) => a - b);
+            const gradesForClubParticipation = [...new Set(data.map(s => s.grade))].filter(g => g > 0).sort((a, b) => a - b);
             const clubParticipationByGrade = gradesForClubParticipation.map(grade => {
                 const studentsInGrade = data.filter(s => s.grade === grade);
                 return studentsInGrade.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended && s.clubsAttended.trim() !== '')).length;
