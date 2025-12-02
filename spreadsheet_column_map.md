@@ -128,6 +128,7 @@ Tab name: Spartan Hour Rosters
 1 : B : Student Name : Name (Last, First)
 
 Tab name: D/F No Request
+ROW 1: 
 0 : A : Spartan Hour Dates : String
 1 : B : 9/2/2025 : String
 2 : C : 9/4/2025 : String
@@ -156,6 +157,12 @@ Tab name: D/F No Request
 25 : Z : 11/25/2025 : String
 26 : AA : 11/27/2025 : String
 [Columns continue for every Tuesday and Thursday dates]
+
+ROW 2: 
+0 : A : "Total Students on D/F List without a Spartan Hour Request" : String
+1 : B : [Sum of all cells with names in the remainder of the column rows below this cell] : Integer
+2 : C : [Sum of all cells with names in the remainder of the column rows below this cell] : Integer
+[Columns continue for every date column from row 1]
 
 Tab name: 
 0 : A :  : 
