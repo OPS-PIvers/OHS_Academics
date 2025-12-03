@@ -2128,7 +2128,7 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromi
   } else {
     // Standard Tier 2 Instructor view includes academic data
     leftColumnContent = `
-            <p style="margin: 0 0 8px;"><strong>Grade:</strong> ${student.grade}</p>
+            <p style="margin: 0 0 8px;"><strong>Grade Level:</strong> ${student.grade}</p>
             <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
             <p style="margin: 0 0 8px;"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
             <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
