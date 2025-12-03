@@ -40,7 +40,7 @@ class Sheet {
 
         const numRows = endRow - startRow + 1;
         const result = [];
-        for (let i = 0; i < numRows; i++) {
+        for(let i=0; i<numRows; i++) {
             const rowIndex = (startRow - 1) + i;
             if (rowIndex < this.data.length) {
                 result.push([this.data[rowIndex][0]]);
@@ -66,6 +66,7 @@ class Spreadsheet {
     return this.sheets.get(name) || null;
   }
   addSheet(name, data) {
+    // Overwrite existing sheet if present to ensure test isolation
     this.sheets.set(name, new Sheet(name, data));
   }
 }
@@ -149,8 +150,28 @@ async function runTests() {
         failed = true;
     }
 
-    // Test Case 2: Normal Case - With Admins (Regression Test)
-    console.log("\n--- Test Case 2: Valid Admin Settings ---");
+    // Test Case 2: Completely Empty Sheet (Edge Case)
+    // Should also return empty array
+    console.log("\n--- Test Case 2: Completely Empty Sheet ---");
+    activeSpreadsheet.addSheet("Admin Settings", []); // 0 Rows
+
+    try {
+        const adminNames = sandbox.getAdminNames();
+        if (Array.isArray(adminNames) && adminNames.length === 0) {
+            console.log("PASS: getAdminNames returned empty array as expected.");
+        } else {
+            console.log("FAIL: getAdminNames returned unexpected result:", adminNames);
+            failed = true;
+        }
+    } catch (e) {
+        console.log("FAIL: Threw error instead of returning empty array:");
+        console.log(e.message);
+        failed = true;
+    }
+
+    // Test Case 3: Normal Case - With Admins (Regression Test)
+    console.log("\n--- Test Case 3: Valid Admin Settings ---");
+    // Note: addSheet overwrites the previous "Admin Settings" sheet
     activeSpreadsheet.addSheet("Admin Settings", [
         ["Name", "Email"],
         ["Admin One", "admin1@school.org"],
