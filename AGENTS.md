@@ -5,7 +5,7 @@
 
 ## Tech Stack
 *   **Backend**: Google Apps Script (JavaScript).
-*   **Frontend**: HTML5, Tailwind CSS (via CDN), Chart.js (via CDN), Lodash (via CDN).
+*   **Frontend**: HTML5, Tailwind CSS (via CDN), Chart.js (via CDN), Lodash (via CDN). **Security Note:** All CDN links must use HTTPS and include Subresource Integrity (SRI) hashes and `crossorigin="anonymous"`.
 *   **Data Storage**: Google Sheets.
 *   **Deployment**: `clasp` (Command Line Apps Script Projects).
 
@@ -31,6 +31,7 @@
 
 ### Frontend (`index.html`)
 *   **Single File Component**: All client-side logic (HTML, CSS, JS) is currently in `index.html`. Keep this structure unless splitting is explicitly requested.
+*   **Security**: Any new external libraries must be loaded via HTTPS from a reputable CDN and **MUST** include SRI hashes (`integrity` attribute) and `crossorigin="anonymous"`. Pin exact versions; do not use `latest` tags.
 *   **Tailwind CSS**: Used for styling. Do not add custom CSS unless necessary.
 *   **Chart.js**: Used for all charts. Ensure charts are responsive and handle empty data gracefully.
 *   **Lodash**: Available for data manipulation on the client side.
