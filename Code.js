@@ -1892,18 +1892,29 @@ function sendCaseManagerSummaryEmails() {
     const lastName = row[1];
     const email = row[2];
     if (lastName && email) {
-      const caseManagerObj = { name: `${firstName.trim()} ${lastName.trim()}`, firstName: firstName.trim(), email: email.trim(), students: [] };
+      const safeFirstName = firstName ? firstName.toString().trim() : '';
+      const safeLastName = lastName.toString().trim();
+      const fullName = safeFirstName ? `${safeFirstName} ${safeLastName}` : safeLastName;
 
-      const cleanLast = lastName.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const caseManagerObj = {
+        name: fullName,
+        firstName: safeFirstName,
+        email: email.toString().trim(),
+        students: []
+      };
+
+      const cleanLast = safeLastName.toLowerCase().replace(/[^a-z0-9]/g, '');
       if (cleanLast && !caseManagerMap.has(cleanLast)) {
         caseManagerMap.set(cleanLast, caseManagerObj);
       }
 
       // Also add full name key to handle cases where student data includes first and last name
-      const cleanFirst = firstName.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-      const fullKey = (cleanFirst + cleanLast);
-      if (fullKey && !caseManagerMap.has(fullKey)) {
-        caseManagerMap.set(fullKey, caseManagerObj);
+      if (safeFirstName) {
+        const cleanFirst = safeFirstName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const fullKey = (cleanFirst + cleanLast);
+        if (fullKey && !caseManagerMap.has(fullKey)) {
+          caseManagerMap.set(fullKey, caseManagerObj);
+        }
       }
     }
   });
