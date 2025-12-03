@@ -1643,6 +1643,8 @@ function getAdminNames() {
 
   // Get all data from column A and filter out any empty rows.
   const lastRow = adminSheet.getLastRow();
+  if (lastRow < 2) return [];
+
   const adminNames = adminSheet.getRange('A2:A' + lastRow)
     .getValues()
     .map(row => row[0])
