@@ -1892,9 +1892,18 @@ function sendCaseManagerSummaryEmails() {
     const lastName = row[1];
     const email = row[2];
     if (lastName && email) {
-      const matchKey = lastName.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (!caseManagerMap.has(matchKey)) {
-        caseManagerMap.set(matchKey, { name: `${firstName.trim()} ${lastName.trim()}`, firstName: firstName.trim(), email: email.trim(), students: [] });
+      const caseManagerObj = { name: `${firstName.trim()} ${lastName.trim()}`, firstName: firstName.trim(), email: email.trim(), students: [] };
+
+      const cleanLast = lastName.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanLast && !caseManagerMap.has(cleanLast)) {
+        caseManagerMap.set(cleanLast, caseManagerObj);
+      }
+
+      // Also add full name key to handle cases where student data includes first and last name
+      const cleanFirst = firstName.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const fullKey = (cleanFirst + cleanLast);
+      if (fullKey && !caseManagerMap.has(fullKey)) {
+        caseManagerMap.set(fullKey, caseManagerObj);
       }
     }
   });
@@ -2044,8 +2053,9 @@ function sendCaseManagerSummaryEmails() {
     }
   });
 
-  // 6. Iterate over each group and send a tailored email
-  for (const [key, caseManagerInfo] of caseManagerMap.entries()) {
+  // 6. Iterate over each unique case manager and send a tailored email
+  const uniqueCaseManagers = new Set(caseManagerMap.values());
+  for (const caseManagerInfo of uniqueCaseManagers) {
     if (caseManagerInfo.students.length === 0) {
       continue;
     }
