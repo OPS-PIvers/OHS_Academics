@@ -5,7 +5,7 @@ This project is a comprehensive Google Apps Script solution designed to manage, 
 ## Project Structure and Technologies
 
 *   **Core Logic:** Implemented in Google Apps Script (JavaScript) within `Code.js`.
-*   **Data Storage:** Primarily Google Sheets, with specific sheets expected for "Admin Settings", "⭐Academics & Attendance Hub", and "✎Activity Advisors & Coaches". The `spreadsheet_column_map.md` file details the expected column structure.
+*   **Data Storage:** Primarily Google Sheets, with specific sheets expected for "Admin Settings", "⭐Academics & Attendance Hub", and "✎Activity Advisors & Coaches". The `spreadsheet_schema.md` file details the expected column structure.
 *   **Web Application:** A client-side dashboard built with HTML (`index.html`), styled using Tailwind CSS, and featuring interactive charts powered by Chart.js and data manipulation with Lodash.
 *   **Development Tooling:** Uses `clasp` for command-line interaction with Google Apps Script projects.
 
@@ -37,4 +37,4 @@ This project is a Google Apps Script, typically deployed and managed through the
 *   **Specific Sheet Names:** The script relies on the presence of sheets named "Admin Settings", "⭐Academics & Attendance Hub", and "✎Activity Advisors & Coaches" within the bound spreadsheet.
 *   **Client-Server Communication:** The web app (`index.html`) communicates with the Apps Script backend (`Code.js`) using `google.script.run` for asynchronous function calls.
 *   **Logging:** `Logger.log()` is used for debugging and tracking script execution within the Google Apps Script environment.
-*   **Data Structure:** The `spreadsheet_column_map.md` file serves as critical documentation for the expected data schema within the Google Sheets, outlining column names, indices, and data types.
+*   **Data Structure:** The `spreadsheet_schema.md` file serves as critical documentation for the expected data schema within the Google Sheets, outlining column names, indices, and data types.

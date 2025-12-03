@@ -12,7 +12,7 @@
 ## File Structure
 *   `Code.js`: Contains all server-side logic, including data retrieval, email automation, and serving the web app.
 *   `index.html`: The client-side code for the dashboard, including HTML, CSS (Tailwind), and JavaScript (Chart.js logic).
-*   `spreadsheet_column_map.md`: **CRITICAL**. Maps spreadsheet columns to data fields. Always refer to this when modifying data retrieval logic.
+*   `spreadsheet_schema.md`: **CRITICAL**. Maps spreadsheet columns to data fields. Always refer to this when modifying data retrieval logic.
 *   `SNAPSHOT_SETUP.md`: Documentation for the historical snapshot system.
 *   `README.md` & `GEMINI.md`: General project documentation.
 
@@ -37,7 +37,7 @@
 *   **Lodash**: Available for data manipulation on the client side.
 
 ### Spreadsheet Integration
-*   **Column Mapping**: **NEVER** hardcode column indices without checking `spreadsheet_column_map.md`. The spreadsheet structure is fragile.
+*   **Column Mapping**: **NEVER** hardcode column indices without checking `spreadsheet_schema.md`. The spreadsheet structure is fragile.
 *   **Sheet Names**: The code relies on specific sheet names (e.g., "⭐Academics & Attendance Hub", "Admin Settings"). Do not change these in the code unless the sheet itself has changed.
 
 ## Testing & Verification
@@ -52,7 +52,7 @@ Since there is no automated test suite:
 
 ## Specific Instructions for Agents
 *   **Adding Metrics**: If asked to add a new metric:
-    1.  Check `spreadsheet_column_map.md` to find the source column.
+    1.  Check `spreadsheet_schema.md` to find the source column.
     2.  Update `SNAPSHOT_METRICS_CONFIG` in `Code.js` if it's a global metric.
     3.  Update `getAggregatedStats` and `getStudentDataForWebApp` in `Code.js`.
     4.  Update the frontend in `index.html` to display the new metric.
@@ -60,5 +60,5 @@ Since there is no automated test suite:
 *   **Privacy**: **NEVER** expose student names to the `TEACHER` role or in global aggregate views. Use anonymization where appropriate (e.g., `getAnonymizedStudentData`).
 
 ## Common Tasks
-*   **Update Column Map**: If the spreadsheet columns change, update `spreadsheet_column_map.md` first, then update column indices in `Code.js`.
+*   **Update Column Map**: If the spreadsheet columns change, update `spreadsheet_schema.md` first, then update column indices in `Code.js`.
 *   **New Chart**: Add a canvas element in `index.html` and initialize a new Chart instance in the `renderCharts` function.
