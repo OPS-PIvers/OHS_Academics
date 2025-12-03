@@ -1,0 +1,7 @@
+tests/
+tests/**
+**/tests/**
+*.md
+.gemini/**
+.claude/**
+.git/**

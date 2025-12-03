@@ -496,6 +496,7 @@ function sendTier2InstructorEmails() {
   });
 
   // 6. Generate and send an email for each instructor
+  const sentRecipients = [];
   instructorData.forEach(instructor => {
     if (instructor.students.length === 0) {
       Logger.log(`No students to report for ${instructor.name}. Skipping email.`);
@@ -533,10 +534,18 @@ function sendTier2InstructorEmails() {
         htmlBody: htmlBody
       });
       Logger.log(`Successfully sent summary email to ${instructor.name} at ${instructor.email}`);
+      sentRecipients.push({ 
+        name: instructor.fullName, 
+        email: instructor.email,
+        role: instructor.isPromiseFellow ? "Promise Fellow" : "Tier 2 Instructor"
+      });
     } catch (e) {
       Logger.log(`Failed to send email to ${instructor.name}. Error: ${e.toString()}`);
     }
   });
+
+  // Send recap to admin
+  sendAdminRecapEmail("Tier 2 Instructor Summary Emails", sentRecipients);
 }
 
 // ===============================================================
@@ -714,6 +723,7 @@ function sendCounselorSummaryEmails() {
   });
 
   // 5. Generate and send an email for each counselor
+  const sentRecipients = [];
   counselorData.forEach(counselor => {
     if (counselor.students.length === 0) {
       Logger.log(`No students to report for ${counselor.name}. Skipping email.`);
@@ -789,10 +799,13 @@ function sendCounselorSummaryEmails() {
         htmlBody: htmlBody
       });
       Logger.log(`Successfully sent summary email to ${counselor.name} at ${counselor.email}`);
+      sentRecipients.push({name: counselor.name, email: counselor.email});
     } catch (e) {
       Logger.log(`Failed to send email to ${counselor.name}. Error: ${e.toString()}`);
     }
   });
+
+  sendAdminRecapEmail("Counselor Summary Emails", sentRecipients);
 }
 
 
@@ -1544,6 +1557,7 @@ function sendIneligibilityNotifications() {
   const sendUpdates = allValues.map(row => [row[sendCol - 1]]);
   const timestampUpdates = allValues.map(row => [row[timestampCol - 1] || '']);
   let updatesMade = false;
+  const sentRecipients = [];
 
   // --- Loop through every row of data ---
   allValues.forEach((rowData, index) => {
@@ -1616,6 +1630,7 @@ function sendIneligibilityNotifications() {
         sendUpdates[index][0] = false;          // Uncheck the box
         updatesMade = true;
         Logger.log(`Successfully sent email for row ${sheetRow} ('${activity}').`);
+        sentRecipients.push({ name: activity, email: recipients.join(', ') });
 
       } catch (e) {
         Logger.log(`Error sending email for row ${sheetRow}: ${e.toString()}`);
@@ -1628,6 +1643,8 @@ function sendIneligibilityNotifications() {
     sheet.getRange(2, sendCol, sendUpdates.length, 1).setValues(sendUpdates);
     sheet.getRange(2, timestampCol, timestampUpdates.length, 1).setValues(timestampUpdates);
   }
+  
+  sendAdminRecapEmail("Ineligibility Notifications (Advisors/Coaches)", sentRecipients);
 }
 /**
  * Gets the admin names from the "Admin Settings" sheet.
@@ -1889,6 +1906,7 @@ function sendIneligibilitySummary() {
       htmlBody: htmlBody
     });
     Logger.log("Eligibility summary email sent successfully.");
+    sendAdminRecapEmail("Ineligibility Summary (Admins)", [{name: "Administrators", email: recipients.join(', ')}]);
   } catch (e) {
     Logger.log(`Error sending summary email: ${e.toString()}`);
   }
@@ -2091,6 +2109,7 @@ function sendCaseManagerSummaryEmails() {
 
   // 6. Iterate over each unique case manager and send a tailored email
   const uniqueCaseManagers = new Set(caseManagerMap.values());
+  const sentRecipients = [];
   for (const caseManagerInfo of uniqueCaseManagers) {
     if (caseManagerInfo.students.length === 0) {
       continue;
@@ -2131,10 +2150,13 @@ function sendCaseManagerSummaryEmails() {
         htmlBody: htmlBody
       });
       Logger.log(`Successfully sent summary email to ${caseManagerInfo.name} at ${caseManagerInfo.email}`);
+      sentRecipients.push({name: caseManagerInfo.name, email: caseManagerInfo.email});
     } catch (e) {
       Logger.log(`Failed to send email to ${caseManagerInfo.name}. Error: ${e.toString()}`);
     }
   }
+  
+  sendAdminRecapEmail("Case Manager Summary Emails", sentRecipients);
 }
 
 /**
@@ -2154,33 +2176,27 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromi
     return '#ffffff'; // White for low absences
   };
 
-  // Determine left column content based on role
+  // Determine left column content and layout based on role
   let leftColumnContent;
+  let spartanHourColumn = '';
+  let leftColumnWidth = '50%';
 
   if (isPromiseFellow) {
-    // Promise Fellow receives ONLY attendance-related info, no specific grade data
+    // Promise Fellow receives ONLY attendance-related info, no specific grade data, no detention, no spartan hour summary
     leftColumnContent = `
             <p style="margin: 0 0 8px;"><strong>Grade Level:</strong> ${student.grade}</p>
-            <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
     `;
+    leftColumnWidth = '100%';
   } else {
-    // Standard Tier 2 Instructor view includes academic data
+    // Standard Tier 2 Instructor view includes academic data and spartan hour summary
     leftColumnContent = `
             <p style="margin: 0 0 8px;"><strong>Grade Level:</strong> ${student.grade}</p>
             <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
             <p style="margin: 0 0 8px;"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
             <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
     `;
-  }
 
-  return `
-    <div style="border: 1px solid ${isFailing ? '#d9534f' : '#ddd'}; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9; font-family: 'Roboto', sans-serif;">
-      <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 20px; color: #333; font-weight: 500;">${student.name}</h3>
-      <table style="width: 100%;">
-        <tr>
-          <td style="width: 50%; vertical-align: top; padding-right: 10px;">
-            ${leftColumnContent}
-          </td>
+    spartanHourColumn = `
           <td style="width: 50%; vertical-align: top; padding-left: 10px;">
             <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 16px; color: #555;">Spartan Hour Summary (Last 7 Days)</h4>
             <ul style="margin: 0; padding-left: 20px; list-style-type: none;">
@@ -2189,6 +2205,18 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromi
               <li><strong>Skipped Sessions:</strong> ${spartanData.skipped || '0'}</li>
             </ul>
           </td>
+    `;
+  }
+
+  return `
+    <div style="border: 1px solid ${isFailing ? '#d9534f' : '#ddd'}; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9; font-family: 'Roboto', sans-serif;">
+      <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 20px; color: #333; font-weight: 500;">${student.name}</h3>
+      <table style="width: 100%;">
+        <tr>
+          <td style="width: ${leftColumnWidth}; vertical-align: top; padding-right: 10px;">
+            ${leftColumnContent}
+          </td>
+          ${spartanHourColumn}
         </tr>
       </table>
       <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 16px; color: #555;">Absences by Period</h4>
@@ -2222,6 +2250,94 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromi
       </table>
     </div>
   `;
+}
+
+/**
+ * Sends a recap email to the administrator summarizing the emails sent by a specific process.
+ * @param {string} processName - The name of the process (e.g., "Tier 2 Instructor Emails").
+ * @param {Array<{name: string, email: string}>} recipients - List of recipients who received emails.
+ */
+function sendAdminRecapEmail(processName, recipients) {
+  const adminEmail = "erin.head@orono.k12.mn.us";
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy 'at' h:mm a");
+  
+  if (!recipients || recipients.length === 0) {
+    Logger.log(`No emails sent for ${processName}, skipping admin recap.`);
+    return;
+  }
+
+  // Group recipients by role if available, otherwise group under "General"
+  const groupedRecipients = recipients.reduce((acc, r) => {
+    const role = r.role || "General";
+    if (!acc[role]) acc[role] = [];
+    acc[role].push(r);
+    return acc;
+  }, {});
+
+  // Check if we have distinct roles other than "General" or just one group
+  const roles = Object.keys(groupedRecipients);
+  const useSubheaders = roles.length > 1 || (roles.length === 1 && roles[0] !== "General");
+
+  let tablesHtml = '';
+
+  roles.forEach(role => {
+    const group = groupedRecipients[role];
+    const groupRows = group.map(r => `
+      <tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${r.name}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${r.email}</td>
+      </tr>
+    `).join('');
+
+    if (useSubheaders) {
+      tablesHtml += `<h4 style="margin-top: 20px; margin-bottom: 10px; color: #555;">${role}</h4>`;
+    }
+
+    tablesHtml += `
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+        <thead>
+          <tr style="background-color: #f8f9fa; text-align: left;">
+            <th style="padding: 8px 12px; border-bottom: 2px solid #ddd;">Name/Context</th>
+            <th style="padding: 8px 12px; border-bottom: 2px solid #ddd;">Email Address</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${groupRows}
+        </tbody>
+      </table>
+    `;
+  });
+
+  const subject = `[System Recap] ${processName} - ${timestamp}`;
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <body style="margin: 0; padding: 20px; background-color: #f0f0f0; font-family: Arial, sans-serif;">
+      <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2 style="color: #4356a0; margin-top: 0;">Email Notification Recap</h2>
+        <p><strong>Process:</strong> ${processName}</p>
+        <p><strong>Time:</strong> ${timestamp}</p>
+        <p><strong>Total Emails Sent:</strong> ${recipients.length}</p>
+        
+        <h3 style="margin-top: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Recipient List</h3>
+        ${tablesHtml}
+        
+        <p style="margin-top: 30px; font-size: 12px; color: #777;">This is an automated system log.</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    MailApp.sendEmail({
+      to: adminEmail,
+      subject: subject,
+      htmlBody: htmlBody
+    });
+    Logger.log(`Sent admin recap email to ${adminEmail} for ${processName}`);
+  } catch (e) {
+    Logger.log(`Failed to send admin recap email: ${e.toString()}`);
+  }
 }
 
 
