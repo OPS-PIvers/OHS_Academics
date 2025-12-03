@@ -325,19 +325,27 @@ function sendTier2InstructorEmails() {
       Logger.log("No instructor data found in 'Admin Settings' sheet.");
       return;
     }
-    // Assumes Tier 2 Instructor Name (J), Email (L)
+    // Assumes Tier 2 Instructor Name (J), Intervention Type (K), Email (L)
     const instructorRange = adminSheet.getRange("J2:L" + adminLastRow).getValues();
     
     instructorData = instructorRange.map(row => {
       const fullName = row[0];
+      const intervention = row[1];
       const email = row[2];
+
       if (fullName && email) {
         const nameParts = fullName.trim().split(' ');
         const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+
+        // Identify if this is the Promise Fellow role
+        // Check if intervention string contains "Promise Fellow" (case insensitive)
+        const isPromiseFellow = intervention && intervention.toString().toLowerCase().includes("promise fellow");
+
         return {
           fullName: fullName.trim(),
           lastName: lastName.trim().toLowerCase(),
           email: email.trim(),
+          isPromiseFellow: isPromiseFellow,
           students: [] // Initialize an empty array to hold students
         };
       }
@@ -499,7 +507,7 @@ function sendTier2InstructorEmails() {
     const studentCardsHtml = instructor.students.map(student => {
       const spartanData = spartanHourData.get(student.name.trim().toLowerCase()) || { requests: 0, skipped: 0, signups: 0 };
       const studentAbsenceData = absenceData.get(student.name.trim().toLowerCase()) || { p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, sphr: 0 };
-      return createStudentCardHtml(student, spartanData, studentAbsenceData);
+      return createStudentCardHtml(student, spartanData, studentAbsenceData, instructor.isPromiseFellow);
     }).join('');
 
     const timestampForSubject = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy");
@@ -2117,9 +2125,10 @@ function sendCaseManagerSummaryEmails() {
  * @param {object} student - The student data object.
  * @param {object} spartanData - The Spartan Hour data for the student.
  * @param {object} studentAbsenceData - The absence data for the student.
+ * @param {boolean} isPromiseFellow - Whether the recipient is a Promise Fellow (restricts academic data).
  * @returns {string} The HTML string for the student card.
  */
-function createStudentCardHtml(student, spartanData, studentAbsenceData) {
+function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromiseFellow = false) {
   const isFailing = student.failing && student.failing.length > 0;
 
   const getAbsenceColor = (absences) => {
@@ -2128,16 +2137,32 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData) {
     return '#ffffff'; // White for low absences
   };
 
+  // Determine left column content based on role
+  let leftColumnContent;
+
+  if (isPromiseFellow) {
+    // Promise Fellow receives ONLY attendance-related info, no specific grade data
+    leftColumnContent = `
+            <p style="margin: 0 0 8px;"><strong>Grade Level:</strong> ${student.grade}</p>
+            <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
+    `;
+  } else {
+    // Standard Tier 2 Instructor view includes academic data
+    leftColumnContent = `
+            <p style="margin: 0 0 8px;"><strong>Grade Level:</strong> ${student.grade}</p>
+            <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
+            <p style="margin: 0 0 8px;"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
+            <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
+    `;
+  }
+
   return `
     <div style="border: 1px solid ${isFailing ? '#d9534f' : '#ddd'}; border-radius: 8px; margin-bottom: 20px; padding: 16px; background-color: #f9f9f9; font-family: 'Roboto', sans-serif;">
       <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 20px; color: #333; font-weight: 500;">${student.name}</h3>
       <table style="width: 100%;">
         <tr>
           <td style="width: 50%; vertical-align: top; padding-right: 10px;">
-            <p style="margin: 0 0 8px;"><strong>Grade:</strong> ${student.grade}</p>
-            <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
-            <p style="margin: 0 0 8px;"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
-            <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
+            ${leftColumnContent}
           </td>
           <td style="width: 50%; vertical-align: top; padding-left: 10px;">
             <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 16px; color: #555;">Spartan Hour Summary (Last 7 Days)</h4>
