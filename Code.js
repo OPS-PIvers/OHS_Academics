@@ -1539,6 +1539,12 @@ function sendIneligibilityNotifications() {
     contactMessage = "If you have any questions, please contact a school administrator for additional information.";
   }
 
+  // --- Initialize arrays for batch updates ---
+  // We initialize them with the current values to avoid overwriting with nulls/empty data accidentally.
+  const sendUpdates = allValues.map(row => [row[sendCol - 1]]);
+  const timestampUpdates = allValues.map(row => [row[timestampCol - 1] || '']);
+  let updatesMade = false;
+
   // --- Loop through every row of data ---
   allValues.forEach((rowData, index) => {
     const shouldSend = rowData[sendCol - 1]; // Column I is at index 8 of the array
@@ -1557,7 +1563,8 @@ function sendIneligibilityNotifications() {
       
       // Skip if there are no students listed for this activity
       if (!students || students.trim() === "") {
-        sheet.getRange(sheetRow, sendCol).setValue(false); // Uncheck the box to prevent future errors
+        sendUpdates[index][0] = false; // Uncheck the box to prevent future errors
+        updatesMade = true;
         Logger.log(`Row ${sheetRow}: Skipped due to no students listed. Box unchecked.`);
         return; // This acts like 'continue' in a forEach loop
       }
@@ -1573,7 +1580,8 @@ function sendIneligibilityNotifications() {
       
       // If no valid recipients, log and uncheck the box
       if (recipients.length === 0) {
-        sheet.getRange(sheetRow, sendCol).setValue(false);
+        sendUpdates[index][0] = false; // Uncheck the box
+        updatesMade = true;
         Logger.log(`Row ${sheetRow}: Skipped because no recipient emails were found for '${activity}'. Box unchecked.`);
         return;
       }
@@ -1603,9 +1611,10 @@ function sendIneligibilityNotifications() {
       try {
         MailApp.sendEmail({ to: recipients.join(','), subject: subject, htmlBody: htmlBody });
 
-        // --- IMPORTANT: Update the sheet after sending the email ---
-        sheet.getRange(sheetRow, timestampCol).setValue(timestamp); // Add the new timestamp
-        sheet.getRange(sheetRow, sendCol).setValue(false);          // Uncheck the box to prevent re-sending
+        // --- IMPORTANT: Update the arrays instead of writing immediately ---
+        timestampUpdates[index][0] = timestamp; // Add the new timestamp
+        sendUpdates[index][0] = false;          // Uncheck the box
+        updatesMade = true;
         Logger.log(`Successfully sent email for row ${sheetRow} ('${activity}').`);
 
       } catch (e) {
@@ -1613,6 +1622,12 @@ function sendIneligibilityNotifications() {
       }
     }
   });
+
+  // --- Perform batch update if changes were made ---
+  if (updatesMade) {
+    sheet.getRange(2, sendCol, sendUpdates.length, 1).setValues(sendUpdates);
+    sheet.getRange(2, timestampCol, timestampUpdates.length, 1).setValues(timestampUpdates);
+  }
 }
 /**
  * Gets the admin names from the "Admin Settings" sheet.
