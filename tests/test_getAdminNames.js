@@ -40,7 +40,7 @@ class Sheet {
 
         const numRows = endRow - startRow + 1;
         const result = [];
-        for(let i=0; i<numRows; i++) {
+        for (let i = 0; i < numRows; i++) {
             const rowIndex = (startRow - 1) + i;
             if (rowIndex < this.data.length) {
                 result.push([this.data[rowIndex][0]]);
