@@ -1703,63 +1703,48 @@ function getAdminEmails() {
 function sendIneligibilitySummary() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
-  const advisorsSheet = ss.getSheetByName("✎Activity Advisors & Coaches");
 
-  if (!hubSheet || !advisorsSheet) {
-    Logger.log("Could not find one of the required sheets: '⭐Academics & Attendance Hub' or '✎Activity Advisors & Coaches'.");
+  if (!hubSheet) {
+    Logger.log("Could not find required sheet: '⭐Academics & Attendance Hub'.");
     return;
   }
 
-  // 1. Get F counts and class lists for all students from the Hub sheet
-  const studentFailureData = new Map();
-  const hubData = hubSheet.getRange("B2:L" + hubSheet.getLastRow()).getValues();
-  hubData.forEach(row => {
-    const studentName = row[0]; // Column B
-    const classList = row[10]; // Column L
-    if (studentName && classList && typeof classList.toString === 'function') {
-      const failingClasses = classList.toString().split('\n').filter(String);
-      const fCount = failingClasses.length;
-      if (fCount > 0) {
-        studentFailureData.set(studentName.trim().toLowerCase(), {
-          fCount: fCount,
-          classes: failingClasses.join('\n')
-        });
-      }
-    }
-  });
-
-  // 2. Collect students from the Advisors sheet and categorize them
   const ineligibleStudents = []; // >= 2 Fs
   const atRiskStudents = []; // == 1 F
 
-  const advisorData = advisorsSheet.getDataRange().getValues();
-  const dataRows = advisorData.slice(1); // Remove header row
+  // Get data from Hub: Column B (Name) to L (Class List)
+  // Indices relative to B:
+  // 0: Name
+  // 4: Activity (Col F)
+  // 10: Class List (Col L)
+  const hubData = hubSheet.getRange("B2:L" + hubSheet.getLastRow()).getValues();
 
-  dataRows.forEach(row => {
-    const activity = row[0]; // Activity is in Column A
-    const studentsString = row[1]; // Students are in Column B
+  hubData.forEach(row => {
+    const studentName = row[0];
+    const activityString = row[4];
+    const classList = row[10];
 
-    if (activity && studentsString) {
-      const studentNames = studentsString.split('\n').filter(String);
-      studentNames.forEach(name => {
-        const studentName = name.trim();
-        const studentData = studentFailureData.get(studentName.toLowerCase()) || {
-          fCount: 0,
-          classes: ''
-        };
+    // Check if student has failing classes AND is in an activity
+    if (studentName && activityString && classList && typeof classList.toString === 'function') {
+      const failingClasses = classList.toString().split('\n').filter(String);
+      const fCount = failingClasses.length;
+
+      if (fCount > 0) {
+        // Use the activity string directly, just trimmed
+        const activityList = activityString.toString().trim();
 
         const studentInfo = {
-          student: studentName,
-          activity: activity.trim(),
-          classes: studentData.classes
+          student: studentName.trim(),
+          activity: activityList,
+          classes: failingClasses.join('\n')
         };
 
-        if (studentData.fCount >= 2) {
+        if (fCount >= 2) {
           ineligibleStudents.push(studentInfo);
-        } else if (studentData.fCount === 1) {
+        } else if (fCount === 1) {
           atRiskStudents.push(studentInfo);
         }
-      });
+      }
     }
   });
 
@@ -1769,16 +1754,13 @@ function sendIneligibilitySummary() {
     return;
   }
 
-  // 3. Sort both lists: first by activity, then by student name
-  const sortFunction = (a, b) => {
-    const activityCompare = a.activity.localeCompare(b.activity);
-    if (activityCompare !== 0) return activityCompare;
-    return a.student.localeCompare(b.student);
-  };
+  // Sort both lists: Alphabetically by student name
+  const sortFunction = (a, b) => a.student.localeCompare(b.student);
+  
   ineligibleStudents.sort(sortFunction);
   atRiskStudents.sort(sortFunction);
 
-  // 4. Helper function to create an HTML table for a list of students
+  // Helper function to create an HTML table for a list of students
   const createHtmlTable = (studentList) => {
     return studentList.map((item, index) => {
       const backgroundColor = index % 2 === 0 ? '#ffffff' : '#f9f9f9'; // Alternating colors
@@ -1793,7 +1775,7 @@ function sendIneligibilitySummary() {
     }).join('');
   };
 
-  // 5. Build the HTML for both sections
+  // Build the HTML for both sections
   let emailSectionsHtml = "";
 
   // Section 1: Ineligible Students (Red Alert)
