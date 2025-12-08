@@ -201,18 +201,22 @@ function getSnapshotList() {
 
 /**
  * Compares two snapshots and returns the global metric differences.
- * @param {Date} date1 - First snapshot date (older).
- * @param {Date} date2 - Second snapshot date (newer).
+ * @param {Date|number} date1 - First snapshot date (older) or timestamp.
+ * @param {Date|number} date2 - Second snapshot date (newer) or timestamp.
  * @returns {Object} Object containing comparison of aggregate metrics.
  */
 function compareSnapshots(date1, date2) {
   try {
+    // Convert numbers to Dates if necessary
+    if (typeof date1 === 'number') date1 = new Date(date1);
+    if (typeof date2 === 'number') date2 = new Date(date2);
+
     // Input validation: ensure dates are valid Date objects
     if (!(date1 instanceof Date) || isNaN(date1.getTime())) {
-      return { error: "Invalid date1 parameter. Must be a valid Date object." };
+      return { error: "Invalid date1 parameter. Must be a valid Date object or timestamp." };
     }
     if (!(date2 instanceof Date) || isNaN(date2.getTime())) {
-      return { error: "Invalid date2 parameter. Must be a valid Date object." };
+      return { error: "Invalid date2 parameter. Must be a valid Date object or timestamp." };
     }
 
     const snapshot1 = getSnapshotByDate(date1);
