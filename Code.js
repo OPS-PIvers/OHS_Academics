@@ -1016,7 +1016,9 @@ function getDFNoRequestNames() {
     // Iterate backwards to find the most recent date with data (count > 0)
     for (let i = dates.length - 1; i >= 0; i--) {
       // Check if date exists and count is a positive number
-      if (dates[i] && typeof counts[i] === 'number' && counts[i] > 0) {
+      // Convert count to number to handle both numeric and string values
+      const countValue = Number(counts[i]);
+      if (dates[i] && !isNaN(countValue) && countValue > 0) {
         targetIndex = i;
         break;
       }
@@ -1067,9 +1069,11 @@ function getDFNoRequestDate() {
     // Iterate backwards to find the most recent date with data (count > 0)
     for (let i = dates.length - 1; i >= 0; i--) {
       // Check if date exists and count is a positive number
-      if (dates[i] && typeof counts[i] === 'number' && counts[i] > 0) {
+      // Convert count to number to handle both numeric and string values
+      const countValue = Number(counts[i]);
+      if (dates[i] && !isNaN(countValue) && countValue > 0) {
         const date = dates[i];
-        const count = counts[i];
+        const count = countValue;
         const formattedDate = (date instanceof Date)
           ? Utilities.formatDate(date, Session.getScriptTimeZone(), "MM/dd/yyyy")
           : String(date);

@@ -141,7 +141,8 @@
                     <div id="kpi-spartan-total-requests-card" class="card kpi-card"><div id="spartan-total-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Total Requests</div></div>
                     <div id="kpi-spartan-skipped-requests-card" class="card kpi-card"><div id="spartan-skipped-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour Skipped Requests</div></div>
                     <div id="kpi-spartan-high-priority-requests-card" class="card kpi-card"><div id="spartan-high-priority-requests" class="kpi-value">0</div><div class="kpi-label">Spartan Hour High Priority Requests</div></div>
-                    <div id="kpi-df-no-request-card" class="card kpi-card"><div id="df-no-request" class="kpi-value">0</div><div id="df-no-request-label" class="kpi-label">D/F List No Request</div></div>
+                    <!-- TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement -->
+                    <!-- <div id="kpi-df-no-request-card" class="card kpi-card"><div id="df-no-request" class="kpi-value">0</div><div id="df-no-request-label" class="kpi-label">D/F List No Request</div></div> -->
                     <div id="kpi-total-students-with-club-meetings-card" class="card kpi-card"><div id="total-students-with-club-meetings" class="kpi-value">0</div><div class="kpi-label">Club Participation</div></div>
                 </div>
 
@@ -551,11 +552,12 @@
             document.getElementById('spartan-total-requests').textContent = currentKPIs.spartanHourTotalRequests;
             document.getElementById('spartan-skipped-requests').textContent = currentKPIs.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = currentKPIs.spartanHourReqsHighPriority;
-            
+
+            // TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement
             // Use calculated property
-            document.getElementById('df-no-request').textContent = currentKPIs.dfNoRequestCount;
-            document.getElementById('df-no-request-label').textContent = `D/F List No Request (${dfNoRequestDate})`;
-            
+            // document.getElementById('df-no-request').textContent = currentKPIs.dfNoRequestCount;
+            // document.getElementById('df-no-request-label').textContent = `D/F List No Request (${dfNoRequestDate})`;
+
             document.getElementById('total-students-with-club-meetings').textContent = currentKPIs.totalStudentsWithClubMeetings;
 
             const kpiCardInfo = [
@@ -567,15 +569,18 @@
                 { id: 'kpi-spartan-total-requests-card', key: 'spartanHourTotalRequests' },
                 { id: 'kpi-spartan-skipped-requests-card', key: 'spartanHourSkippedRequests' },
                 { id: 'kpi-spartan-high-priority-requests-card', key: 'spartanHourReqsHighPriority' },
-                { id: 'kpi-df-no-request-card', key: 'dfNoRequestCount' },
+                // TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement
+                // { id: 'kpi-df-no-request-card', key: 'dfNoRequestCount' },
                 { id: 'kpi-total-students-with-club-meetings-card', key: 'totalStudentsWithClubMeetings' }
             ];
 
             kpiCardInfo.forEach(card => {
                 const cardEl = document.getElementById(card.id);
                 cardEl.classList.remove('clickable');
+                // TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement
                 // Always make D/F No Request card clickable since it shows breakdown
-                if (filtersActive || card.key === 'dfNoRequestCount') {
+                // if (filtersActive || card.key === 'dfNoRequestCount') {
+                if (filtersActive) {
                     cardEl.classList.add('clickable');
                     cardEl.dataset.tooltipKey = card.key;
                 }
@@ -708,10 +713,11 @@
             document.getElementById('spartan-total-requests').textContent = kpis.spartanHourTotalRequests;
             document.getElementById('spartan-skipped-requests').textContent = kpis.spartanHourSkippedRequests;
             document.getElementById('spartan-high-priority-requests').textContent = kpis.spartanHourReqsHighPriority;
-            document.getElementById('df-no-request').textContent = kpis.dfNoRequestCount || 0;
-            if (kpis.dfNoRequestDate) {
-                document.getElementById('df-no-request-label').textContent = `D/F List No Request (${kpis.dfNoRequestDate})`;
-            }
+            // TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement
+            // document.getElementById('df-no-request').textContent = kpis.dfNoRequestCount || 0;
+            // if (kpis.dfNoRequestDate) {
+            //     document.getElementById('df-no-request-label').textContent = `D/F List No Request (${kpis.dfNoRequestDate})`;
+            // }
             document.getElementById('total-students-with-club-meetings').textContent = kpis.totalStudentsWithClubMeetings;
         }
 
@@ -760,7 +766,9 @@
 
         // Configuration for metric types: defines which metrics are "lower is better"
         const METRIC_CONFIG = {
-            lowerIsBetter: new Set(['ineligibilityRate', 'avgAbsences', 'totalFGrades', 'spartanHourSkippedRequests', 'ineligibleStudents', 'dfNoRequestCount'])
+            // TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement
+            // lowerIsBetter: new Set(['ineligibilityRate', 'avgAbsences', 'totalFGrades', 'spartanHourSkippedRequests', 'ineligibleStudents', 'dfNoRequestCount'])
+            lowerIsBetter: new Set(['ineligibilityRate', 'avgAbsences', 'totalFGrades', 'spartanHourSkippedRequests', 'ineligibleStudents'])
         };
 
         function openInfographic() {
@@ -829,7 +837,8 @@
                 { key: 'spartanHourTotalRequests', label: 'Spartan Hour Requests' },
                 { key: 'spartanHourSkippedRequests', label: 'Spartan Hour Skipped' },
                 { key: 'spartanHourReqsHighPriority', label: 'High Priority Requests' },
-                { key: 'dfNoRequestCount', label: 'D/F List No Request' },
+                // TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement
+                // { key: 'dfNoRequestCount', label: 'D/F List No Request' },
                 { key: 'totalStudentsWithClubMeetings', label: 'Club Participation' }
             ];
 
@@ -841,29 +850,30 @@
 
             kpiDefinitions.forEach(def => {
                  let comparisons;
-                 if (def.key === 'dfNoRequestCount') {
-                     // Special handling for dfNoRequestCount with percentOfTotal and comparisons
-                     const currentData = baseData.filter(s =>
-                        (globalFilters.grade === 'all' || s.grade == globalFilters.grade) &&
-                        (globalFilters.sped === 'all' || (globalFilters.sped === 'sped' ? s.caseManager : (globalFilters.sped === 'gened' ? !s.caseManager : (globalFilters.sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true)))) &&
-                        (globalFilters.activity === 'all' || (s.activity || '').split(',').map(a => a.trim()).includes(globalFilters.activity))
-                     );
-                     const currentKpi = currentData.filter(s => s.isOnDFNoRequestList).length;
-                     const schoolWideDFCount = baseData.filter(s => s.isOnDFNoRequestList).length;
+                 // TEMPORARILY COMMENTED OUT - D/F List No Request card needs refinement
+                 // if (def.key === 'dfNoRequestCount') {
+                 //     // Special handling for dfNoRequestCount with percentOfTotal and comparisons
+                 //     const currentData = baseData.filter(s =>
+                 //        (globalFilters.grade === 'all' || s.grade == globalFilters.grade) &&
+                 //        (globalFilters.sped === 'all' || (globalFilters.sped === 'sped' ? s.caseManager : (globalFilters.sped === 'gened' ? !s.caseManager : (globalFilters.sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true)))) &&
+                 //        (globalFilters.activity === 'all' || (s.activity || '').split(',').map(a => a.trim()).includes(globalFilters.activity))
+                 //     );
+                 //     const currentKpi = currentData.filter(s => s.isOnDFNoRequestList).length;
+                 //     const schoolWideDFCount = baseData.filter(s => s.isOnDFNoRequestList).length;
 
-                     let comps = [];
-                     // Add school-wide baseline if different from current
-                     if (Math.abs(schoolWideDFCount - currentKpi) > 0.01 || (schoolWideDFCount === 0 && currentKpi !== 0)) {
-                         comps.push({ label: 'School-Wide', value: schoolWideDFCount });
-                     }
+                 //     let comps = [];
+                 //     // Add school-wide baseline if different from current
+                 //     if (Math.abs(schoolWideDFCount - currentKpi) > 0.01 || (schoolWideDFCount === 0 && currentKpi !== 0)) {
+                 //         comps.push({ label: 'School-Wide', value: schoolWideDFCount });
+                 //     }
 
-                     // Calculate percentOfTotal
-                     const percentOfTotal = schoolWideDFCount > 0 ? (currentKpi / schoolWideDFCount) * 100 : null;
+                 //     // Calculate percentOfTotal
+                 //     const percentOfTotal = schoolWideDFCount > 0 ? (currentKpi / schoolWideDFCount) * 100 : null;
 
-                     comparisons = { currentKpi, comparisons: comps, percentOfTotal };
-                 } else {
+                 //     comparisons = { currentKpi, comparisons: comps, percentOfTotal };
+                 // } else {
                      comparisons = getKPIComparisons(def.key, globalFilters, baseData);
-                 }
+                 // }
 
                  const { currentKpi, comparisons: comps, percentOfTotal } = comparisons;
 
