@@ -305,6 +305,9 @@
                 const tabVisuals = document.getElementById('tab-visuals');
                 tabVisuals.classList.add('text-white', 'border-white');
                 tabVisuals.classList.remove('text-gray-400', 'border-transparent');
+
+                // Hide Export Infographic button for TEACHERs (admin-only feature)
+                document.getElementById('export-infographic-btn').style.display = 'none';
             }
 
             if (USER_ROLE === 'COUNSELOR') {
@@ -316,6 +319,9 @@
                 const globalFiltersDiv = document.getElementById('global-filters');
                 globalFiltersDiv.classList.remove('md:grid-cols-3');
                 globalFiltersDiv.classList.add('md:grid-cols-4');
+
+                // Hide Export Infographic button for COUNSELORs (admin-only feature)
+                document.getElementById('export-infographic-btn').style.display = 'none';
             }
         }
         
@@ -752,6 +758,11 @@
 
         let infographicCharts = {};
 
+        // Configuration for metric types: defines which metrics are "lower is better"
+        const METRIC_CONFIG = {
+            lowerIsBetter: new Set(['ineligibilityRate', 'avgAbsences', 'totalFGrades', 'spartanHourSkippedRequests', 'ineligibleStudents', 'dfNoRequestCount'])
+        };
+
         function openInfographic() {
              const modal = document.getElementById('infographic-modal');
              modal.classList.remove('hidden');
@@ -831,13 +842,25 @@
             kpiDefinitions.forEach(def => {
                  let comparisons;
                  if (def.key === 'dfNoRequestCount') {
-                     comparisons = { currentKpi: 0, comparisons: [] };
+                     // Special handling for dfNoRequestCount with percentOfTotal and comparisons
                      const currentData = baseData.filter(s =>
                         (globalFilters.grade === 'all' || s.grade == globalFilters.grade) &&
                         (globalFilters.sped === 'all' || (globalFilters.sped === 'sped' ? s.caseManager : (globalFilters.sped === 'gened' ? !s.caseManager : (globalFilters.sped === 'tier2' ? (s.tier2Interventions && s.tier2Interventions.trim() !== '') : true)))) &&
                         (globalFilters.activity === 'all' || (s.activity || '').split(',').map(a => a.trim()).includes(globalFilters.activity))
                      );
-                     comparisons.currentKpi = currentData.filter(s => s.isOnDFNoRequestList).length;
+                     const currentKpi = currentData.filter(s => s.isOnDFNoRequestList).length;
+                     const schoolWideDFCount = baseData.filter(s => s.isOnDFNoRequestList).length;
+
+                     let comps = [];
+                     // Add school-wide baseline if different from current
+                     if (Math.abs(schoolWideDFCount - currentKpi) > 0.01 || (schoolWideDFCount === 0 && currentKpi !== 0)) {
+                         comps.push({ label: 'School-Wide', value: schoolWideDFCount });
+                     }
+
+                     // Calculate percentOfTotal
+                     const percentOfTotal = schoolWideDFCount > 0 ? (currentKpi / schoolWideDFCount) * 100 : null;
+
+                     comparisons = { currentKpi, comparisons: comps, percentOfTotal };
                  } else {
                      comparisons = getKPIComparisons(def.key, globalFilters, baseData);
                  }
@@ -850,11 +873,8 @@
                          const diff = c.value - currentKpi;
                          let colorClass = 'text-gray-500';
                          if (Math.abs(diff) > 0.01) {
-                             if (def.key.includes('inelig') || def.key.includes('Absence') || def.key.includes('FGrades') || def.key.includes('Skipped')) {
+                             if (METRIC_CONFIG.lowerIsBetter.has(def.key)) {
                                  // Lower is better. If diff > 0, comparison is HIGHER, so current is LOWER (Better) -> Green.
-                                 // Wait. diff = comparison - current.
-                                 // If diff > 0, comparison > current.
-                                 // If "Bad Metric" (Absences): Current < Comparison => Better => Green.
                                  colorClass = diff > 0 ? 'text-green-600' : 'text-red-600';
                              } else {
                                  // Higher is better (participation).
@@ -870,7 +890,7 @@
                      });
                  }
 
-                 if (percentOfTotal !== null && percentOfTotal < 100 && !isNaN(percentOfTotal)) {
+                 if (percentOfTotal !== null && !isNaN(percentOfTotal)) {
                       compHtml += `<div class="flex justify-between text-xs mt-1 border-t pt-1">
                         <span class="text-gray-500">% of Total:</span>
                         <span class="font-medium text-blue-600">${percentOfTotal.toFixed(1)}%</span>
