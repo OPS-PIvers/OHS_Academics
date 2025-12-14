@@ -6,17 +6,28 @@
     <title>OHS Academics & Attendance Dashboard</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2d3f89; }
+        body { font-family: 'Lexend', sans-serif; background-color: #2d3f89; }
+
+        /* OPS Tech Brand Utilities */
+        .ops-text-primary { color: #2d3f89 !important; }
+        .ops-text-red { color: #ad2122 !important; }
+        .ops-bg-primary { background-color: #2d3f89 !important; }
+        .ops-bg-red { background-color: #ad2122 !important; }
+        .ops-btn-primary { background-color: #2d3f89; color: white; transition: background-color 0.2s; }
+        .ops-btn-primary:hover { background-color: #1d2a5d; }
+        .ops-btn-destructive { background-color: #ad2122; color: white; transition: background-color 0.2s; }
+        .ops-btn-destructive:hover { background-color: #7a1718; }
+
         .chart-container { position: relative; height: 300px; width: 100%; }
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
         .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .kpi-value { font-size: 2.5rem; font-weight: 700; color: #2d3f89; }
         .kpi-label { font-size: 1rem; font-weight: 500; color: #4b5563; }
-        .ineligible-text { color: #ef4444; font-weight: 600; }
+        .ineligible-text { color: #ad2122; font-weight: 600; }
         .eligible-text { color: #22c55e; font-weight: 600; }
-        .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #374151; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #374151; font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: 'Lexend', sans-serif; }
         .filter-btn:hover { background-color: #f3f4f6; }
         .filter-btn.active { background-color: #2d3f89; color: white; border-color: #2d3f89; }
         select.filter-select {
@@ -60,7 +71,7 @@
         </header>
 
         <div id="loading-state" class="text-center py-16 bg-white rounded-lg">
-            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <svg class="animate-spin h-8 w-8 ops-text-primary mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             <p class="mt-4 text-gray-600 font-medium">Loading and processing student data...</p>
         </div>
 
@@ -77,7 +88,7 @@
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-gray-700">Student Lookup Filters</h2>
-                        <button id="reset-student-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                        <button id="reset-student-filters-btn" class="text-sm font-medium ops-text-primary hover:text-blue-900 transition">Clear Filters</button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input type="text" id="student-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg">
@@ -106,7 +117,7 @@
                                 </svg>
                                 Export Infographic
                             </button>
-                            <button id="reset-global-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                            <button id="reset-global-filters-btn" class="text-sm font-medium ops-text-primary hover:text-blue-900 transition">Clear Filters</button>
                         </div>
                     </div>
                     <div id="global-filters" class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -220,7 +231,7 @@
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-gray-700">Historical Snapshot Management</h2>
-                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create Snapshot Now">Create Snapshot Now</button>
+                        <button id="create-snapshot-btn" class="px-4 py-2 ops-btn-primary rounded-lg" aria-label="Create Snapshot Now">Create Snapshot Now</button>
                     </div>
                     <p class="text-sm text-gray-600 mb-4">Snapshots are automatically captured every Monday at 11:00 AM before the Tuesday data updates. View trends and compare data week-over-week.</p>
                     <!-- Inline notification message div -->
@@ -903,7 +914,7 @@
                  if (percentOfTotal !== null && !isNaN(percentOfTotal)) {
                       compHtml += `<div class="flex justify-between text-xs mt-1 border-t pt-1">
                         <span class="text-gray-500">% of Total:</span>
-                        <span class="font-medium text-blue-600">${percentOfTotal.toFixed(1)}%</span>
+                        <span class="font-medium ops-text-primary">${percentOfTotal.toFixed(1)}%</span>
                      </div>`;
                  }
 
@@ -1002,7 +1013,7 @@
             noResults.classList.add('hidden');
             listBody.innerHTML = data.map(s => `<tr class="${s.ineligible ? 'bg-red-50' : 'bg-white'}">
                 <td class="px-6 py-4 text-sm text-gray-500 text-center">${s.grade}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div>${s.caseManager ? `<div class="text-xs font-semibold text-blue-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="caseManager">Sp.Ed.</div>` : ''}${s.tier2Interventions || s.tier2Instructor ? `<div class="text-xs font-semibold text-purple-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="tier2">Tier 2</div>` : ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div>${s.caseManager ? `<div class="text-xs font-semibold ops-text-primary cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="caseManager">Sp.Ed.</div>` : ''}${s.tier2Interventions || s.tier2Instructor ? `<div class="text-xs font-semibold text-purple-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="tier2">Tier 2</div>` : ''}</td>
                 <td class="px-6 py-4 text-xs text-gray-500">${s.activity || ''}</td>
                 <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.numFGrades > 0 ? 'border-2 border-red-700' : ''}" data-student='${JSON.stringify(s)}' data-type="failing">${s.numFGrades}</td>
                 <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.unservedDetention > 0 ? 'border-2 border-red-700' : ''}" data-student='${JSON.stringify(s)}' data-type="detention">${s.unservedDetention} hrs</td>
