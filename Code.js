@@ -897,8 +897,18 @@ function getUserRole() {
  * Serves the HTML for the web app dashboard.
  * @returns {HtmlOutput} The HTML output for the web app.
  */
-function doGet() {
+function doGet(e) {
   const userInfo = getUserRole();
+
+  // Route: System Health Diagnostics (Admin Only)
+  if (e && e.parameter && e.parameter.page === 'tests') {
+    if (userInfo && userInfo.role === 'ADMIN') {
+      return HtmlService.createTemplateFromFile('tests').evaluate()
+        .setTitle("Scout System Health")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+    return HtmlService.createHtmlOutput("Access Denied: You must be an Administrator to view system diagnostics.");
+  }
 
   // If user not in Staff Roles, show access denied page
   if (!userInfo) {
