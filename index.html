@@ -6,9 +6,9 @@
     <title>OHS Academics & Attendance Dashboard</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2d3f89; }
+        body { font-family: 'Lexend', sans-serif; background-color: #2d3f89; }
         .chart-container { position: relative; height: 300px; width: 100%; }
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
         .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
@@ -49,6 +49,17 @@
         #tooltip li { margin-top: 0.5rem; display: flex; justify-content: space-between; }
         #tooltip li span:first-child { color: #d1d5db; padding-right: 1rem; }
         .ineligible-row { background-color: #fee2e2; } /* Light red for ineligible students */
+
+        /* OPS Tech Brand Components */
+        .ops-btn-primary {
+            background-color: #2d3f89; /* Primary Blue */
+            color: white;
+            font-family: 'Lexend', sans-serif;
+            border: none;
+            transition: all 0.2s;
+        }
+        .ops-btn-primary:hover { background-color: #1d2a5d; /* Blue Dark */ }
+        .ops-btn-primary:disabled { background-color: #9ca3af; cursor: not-allowed; opacity: 0.8; }
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -220,7 +231,15 @@
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-gray-700">Historical Snapshot Management</h2>
-                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create Snapshot Now">Create Snapshot Now</button>
+                        <button id="create-snapshot-btn" class="ops-btn-primary px-4 py-2 rounded-lg flex items-center justify-center gap-2" aria-label="Create Snapshot Now">
+                            <span id="create-snapshot-text">Create Snapshot Now</span>
+                            <div id="create-snapshot-spinner" class="hidden">
+                                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                        </button>
                     </div>
                     <p class="text-sm text-gray-600 mb-4">Snapshots are automatically captured every Monday at 11:00 AM before the Tuesday data updates. View trends and compare data week-over-week.</p>
                     <!-- Inline notification message div -->
@@ -1409,17 +1428,22 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('create-snapshot-btn').addEventListener('click', () => {
                 const btn = document.getElementById('create-snapshot-btn');
+                const btnText = document.getElementById('create-snapshot-text');
+                const btnSpinner = document.getElementById('create-snapshot-spinner');
+
                 btn.disabled = true;
                 btn.setAttribute('aria-busy', 'true');
                 btn.setAttribute('aria-disabled', 'true');
-                btn.textContent = 'Creating...';
+                btnText.textContent = 'Creating...';
+                btnSpinner.classList.remove('hidden');
 
                 google.script.run
                     .withSuccessHandler(() => {
                         btn.disabled = false;
                         btn.removeAttribute('aria-busy');
                         btn.removeAttribute('aria-disabled');
-                        btn.textContent = 'Create Snapshot Now';
+                        btnText.textContent = 'Create Snapshot Now';
+                        btnSpinner.classList.add('hidden');
                         historicalData = null;
                         loadHistoricalData();
                         showMessage('snapshot-message', 'Snapshot created successfully!', 'success');
@@ -1428,7 +1452,8 @@
                         btn.disabled = false;
                         btn.removeAttribute('aria-busy');
                         btn.removeAttribute('aria-disabled');
-                        btn.textContent = 'Create Snapshot Now';
+                        btnText.textContent = 'Create Snapshot Now';
+                        btnSpinner.classList.add('hidden');
                         showMessage('snapshot-message', 'Error creating snapshot: ' + formatErrorMessage(error), 'error');
                     })
                     .createWeeklySnapshot();
