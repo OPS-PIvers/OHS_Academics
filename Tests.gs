@@ -16,9 +16,9 @@ function runAllTests() {
   // Test: generateNameKey
   try {
     test_generateNameKey();
-    results.push({ name: "generateNameKey Logic", status: "PASSED", message: "All assertions passed." });
+    results.push({ name: "generateNameKey", status: "PASSED", message: "All assertions passed." });
   } catch (e) {
-    results.push({ name: "generateNameKey Logic", status: "FAILED", message: e.message });
+    results.push({ name: "generateNameKey", status: "FAILED", message: e.message });
   }
 
   return results;
