@@ -16,9 +16,9 @@ function runAllTests() {
   // Test: generateNameKey
   try {
     test_generateNameKey();
-    results.push({ name: "generateNameKey", status: "PASSED", message: "All assertions passed." });
+    results.push({ name: "generateNameKey Logic", status: "PASSED", message: "All assertions passed." });
   } catch (e) {
-    results.push({ name: "generateNameKey", status: "FAILED", message: e.message });
+    results.push({ name: "generateNameKey Logic", status: "FAILED", message: e.message });
   }
 
   return results;
@@ -100,7 +100,14 @@ function getSystemHealth() {
  */
 function doTest() {
    const user = getUserRole();
-   if (!user || user.role !== 'ADMIN') {
+
+   if (!user) {
+     Logger.log("doTest access denied: No user info found.");
+     return HtmlService.createHtmlOutput("Access Denied: Unable to verify user identity.");
+   }
+
+   if (user.role !== 'ADMIN') {
+     Logger.log(`doTest access denied: User ${user.email} has role '${user.role}', expected 'ADMIN'.`);
      return HtmlService.createHtmlOutput("Access Denied: Admin role required.");
    }
 
