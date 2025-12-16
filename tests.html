@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Lexend', sans-serif;
+        background-color: #f3f4f6;
+        color: #1f2937;
+        padding: 2rem;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+      }
+      h1 {
+        color: #111827;
+        margin-bottom: 1.5rem;
+      }
+      .section {
+        margin-bottom: 2rem;
+      }
+      .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #374151;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 0.5rem;
+      }
+      .status-item {
+        border: 1px solid #e5e7eb;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-radius: 6px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .status-item.passed {
+        border-left: 5px solid #2d3f89;
+      }
+      .status-item.failed {
+        border-left: 5px solid #ad2122;
+        background-color: #fef2f2;
+      }
+      .status-label {
+        font-weight: 600;
+        color: #374151;
+      }
+      .status-value {
+        font-weight: 700;
+      }
+      .status-value.passed {
+        color: #2d3f89;
+      }
+      .status-value.failed {
+        color: #ad2122;
+      }
+      .status-message {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+      }
+      .loading {
+        text-align: center;
+        color: #6b7280;
+        padding: 2rem;
+      }
+      button {
+        background-color: #2d3f89;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-family: 'Lexend', sans-serif;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      button:disabled {
+        background-color: #9ca3af;
+        cursor: not-allowed;
+      }
+      button:hover:not(:disabled) {
+        background-color: #1e2b60;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>System Health Diagnostic</h1>
+
+      <div id="controls" style="margin-bottom: 2rem; text-align: right;">
+        <button onclick="runDiagnostics()">Re-run Diagnostics</button>
+      </div>
+
+      <div id="results">
+        <div class="loading">Running system checks...</div>
+      </div>
+    </div>
+
+    <script>
+      function runDiagnostics() {
+        const button = document.querySelector('button');
+        button.disabled = true;
+        button.textContent = 'Running...';
+        button.setAttribute('aria-busy', 'true');
+
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '<div class="loading">Running system checks...</div>';
+
+        // Run Health Checks
+        google.script.run
+          .withSuccessHandler(function(healthChecks) {
+            // Run Unit Tests
+            google.script.run
+              .withSuccessHandler(function(unitTests) {
+                renderResults(healthChecks, unitTests);
+                resetButton(button);
+              })
+              .withFailureHandler(function(error) {
+                renderError("Unit Tests Failed: " + error.message);
+                resetButton(button);
+              })
+              .runAllTests();
+          })
+          .withFailureHandler(function(error) {
+            renderError("Health Checks Failed: " + error.message);
+            resetButton(button);
+          })
+          .getSystemHealth();
+      }
+
+      function resetButton(button) {
+        button.disabled = false;
+        button.textContent = 'Re-run Diagnostics';
+        button.removeAttribute('aria-busy');
+      }
+
+      function renderResults(healthChecks, unitTests) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '';
+
+        // Render Health Checks
+        renderSection("Infrastructure Health", healthChecks, resultsDiv);
+
+        // Render Unit Tests
+        renderSection("Unit Tests", unitTests, resultsDiv);
+      }
+
+      function renderSection(title, items, container) {
+        const section = document.createElement('div');
+        section.className = 'section';
+
+        const header = document.createElement('div');
+        header.className = 'section-title';
+        header.textContent = title;
+        section.appendChild(header);
+
+        items.forEach(item => {
+          const div = document.createElement('div');
+          const isPassed = item.status === 'PASSED';
+          div.className = `status-item ${isPassed ? 'passed' : 'failed'}`;
+
+          div.innerHTML = `
+            <div>
+              <div class="status-label">${item.name}</div>
+              <div class="status-message">${item.message}</div>
+            </div>
+            <div class="status-value ${isPassed ? 'passed' : 'failed'}">
+              ${item.status}
+            </div>
+          `;
+          section.appendChild(div);
+        });
+
+        container.appendChild(section);
+      }
+
+      function renderError(message) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = `
+          <div class="status-item failed">
+            <div>
+              <div class="status-label">System Error</div>
+              <div class="status-message">${message}</div>
+            </div>
+            <div class="status-value failed">FAILED</div>
+          </div>
+        `;
+      }
+
+      // Run automatically on load
+      window.onload = runDiagnostics;
+    </script>
+  </body>
+</html>

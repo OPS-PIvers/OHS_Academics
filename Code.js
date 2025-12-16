@@ -897,7 +897,12 @@ function getUserRole() {
  * Serves the HTML for the web app dashboard.
  * @returns {HtmlOutput} The HTML output for the web app.
  */
-function doGet() {
+function doGet(e) {
+  // Route to System Health Check if requested
+  if (e && e.parameter && e.parameter.page === 'tests') {
+    return doTest();
+  }
+
   const userInfo = getUserRole();
 
   // If user not in Staff Roles, show access denied page
