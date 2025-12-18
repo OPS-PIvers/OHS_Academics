@@ -41,10 +41,11 @@
 *   **Sheet Names**: The code relies on specific sheet names (e.g., "⭐Academics & Attendance Hub", "Admin Settings"). Do not change these in the code unless the sheet itself has changed.
 
 ## Testing & Verification
-Since there is no automated test suite:
-1.  **Manual Verification**: After changing `Code.js`, use `console.log` or `Logger.log` to verify data retrieval.
-2.  **Frontend Checks**: Open the web app (or deployment URL) to verify UI changes. Check browser console for errors.
-3.  **Spreadsheet Integrity**: Ensure no data in the spreadsheet is corrupted by script executions.
+We have added an automated test suite in `Tests.gs`.
+1.  **Automated Unit Tests**: Execute `doTest()` in the Apps Script Editor or visit the web app with `?page=tests` (Admin only) to run unit tests and view the OPS Tech branded report.
+2.  **Manual Verification**: After changing `Code.js`, use `console.log` or `Logger.log` to verify data retrieval if not covered by unit tests.
+3.  **Frontend Checks**: Open the web app (or deployment URL) to verify UI changes. Check browser console for errors.
+4.  **Spreadsheet Integrity**: Ensure no data in the spreadsheet is corrupted by script executions.
 
 ## Deployment
 *   Use `clasp push` to upload changes to the Google Apps Script project.

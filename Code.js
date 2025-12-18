@@ -895,10 +895,21 @@ function getUserRole() {
 
 /**
  * Serves the HTML for the web app dashboard.
+ * @param {Object} e - The event parameter.
  * @returns {HtmlOutput} The HTML output for the web app.
  */
-function doGet() {
+function doGet(e) {
   const userInfo = getUserRole();
+
+  // Route to Test Report if requested and user is ADMIN
+  if (e && e.parameter && e.parameter.page === 'tests') {
+    if (userInfo && userInfo.role === 'ADMIN') {
+      return doTest();
+    } else {
+       return HtmlService.createHtmlOutput('Access Denied: Admin role required for tests.')
+         .setTitle('Access Denied');
+    }
+  }
 
   // If user not in Staff Roles, show access denied page
   if (!userInfo) {
