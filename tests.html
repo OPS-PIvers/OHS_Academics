@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'ops-blue': '#2d3f89',
+              'ops-red': '#ad2122',
+              'ops-red-light': '#f8d7da',
+            },
+            fontFamily: {
+              'lexend': ['Lexend', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body { font-family: 'Lexend', sans-serif; }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen p-8">
+    <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+      <div class="bg-ops-blue p-6 text-white flex justify-between items-center">
+        <h1 class="text-2xl font-bold">🔭 System Health Diagnostic</h1>
+        <div id="status-badge" class="hidden"></div>
+      </div>
+
+      <div class="p-6">
+        <div id="loading" class="text-center py-10">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-ops-blue mx-auto mb-4"></div>
+          <p class="text-gray-500">Running diagnostic protocols...</p>
+        </div>
+
+        <div id="results" class="hidden space-y-4">
+          <!-- Results injected here -->
+        </div>
+
+        <div id="summary-footer" class="hidden mt-8 pt-6 border-t border-gray-200 text-center">
+             <button onclick="runTests()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition">
+               Rerun Diagnostics
+             </button>
+             <p class="mt-4 text-xs text-gray-400">Powered by Scout 🔭</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function runTests() {
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const footer = document.getElementById('summary-footer');
+        const badge = document.getElementById('status-badge');
+
+        loading.classList.remove('hidden');
+        results.classList.add('hidden');
+        footer.classList.add('hidden');
+        badge.classList.add('hidden');
+
+        google.script.run
+          .withSuccessHandler(showResults)
+          .withFailureHandler(showError)
+          .getSystemHealth();
+      }
+
+      function showResults(status) {
+        const container = document.getElementById('results');
+        const badge = document.getElementById('status-badge');
+
+        container.innerHTML = '';
+
+        status.checks.forEach(check => {
+          const div = document.createElement('div');
+          const isPass = check.passed;
+
+          div.className = `p-4 border rounded flex justify-between items-center ${isPass ? 'border-gray-200 bg-white' : 'border-ops-red bg-ops-red-light'}`;
+
+          div.innerHTML = `
+            <div>
+              <h3 class="font-bold text-gray-800">${check.name}</h3>
+              <p class="text-sm ${isPass ? 'text-gray-500' : 'text-ops-red font-semibold'}">${check.message}</p>
+            </div>
+            <span class="font-bold ${isPass ? 'text-ops-blue' : 'text-ops-red'}">
+              ${isPass ? 'PASSED' : 'FAILED'}
+            </span>
+          `;
+          container.appendChild(div);
+        });
+
+        // Badge styling: "Passing Tests / Active Status: Use Primary Blue (#2d3f89)"
+        // Since the header is already Blue, we invert it for the badge to pop,
+        // OR we follow the rule strictly.
+        // Let's make the badge White with Blue Text for success (Active Status representation).
+
+        badge.classList.remove('hidden');
+
+        if (status.overall) {
+            badge.textContent = 'ALL SYSTEMS OPERATIONAL';
+            badge.className = 'px-4 py-1 rounded-full font-bold bg-white text-ops-blue border border-ops-blue';
+        } else {
+            badge.textContent = 'SYSTEM ISSUES DETECTED';
+            badge.className = 'px-4 py-1 rounded-full font-bold bg-ops-red text-white border border-white';
+        }
+
+        document.getElementById('loading').classList.add('hidden');
+        container.classList.remove('hidden');
+        document.getElementById('summary-footer').classList.remove('hidden');
+      }
+
+      function showError(error) {
+        const container = document.getElementById('results');
+        container.innerHTML = `
+          <div class="p-4 border border-ops-red bg-ops-red-light rounded">
+             <h3 class="font-bold text-ops-red">Execution Error</h3>
+             <p class="text-ops-red">${error.message}</p>
+          </div>
+        `;
+        document.getElementById('loading').classList.add('hidden');
+        container.classList.remove('hidden');
+      }
+
+      // Start on load
+      window.addEventListener('load', runTests);
+    </script>
+  </body>
+</html>
