@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Lexend', sans-serif;
+      background-color: #f3f4f6;
+      padding: 20px;
+      color: #1f2937;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2d3f89; /* Primary Blue */
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      background-color: #ffffff;
+    }
+    .status-item.passed {
+      border-left: 5px solid #2d3f89; /* Primary Blue */
+    }
+    .status-item.failed {
+      border-left: 5px solid #ad2122; /* Primary Red */
+      background-color: #fff5f5;
+    }
+    .status-name {
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .status-result {
+      font-weight: 700;
+    }
+    .passed .status-result {
+      color: #2d3f89;
+    }
+    .failed .status-result {
+      color: #ad2122;
+    }
+    .error-message {
+      color: #ad2122;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .loading {
+      text-align: center;
+      color: #6b7280;
+      padding: 20px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: #2d3f89;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>System Health Diagnostic</h1>
+    <div id="results">
+      <div class="loading">Running diagnostics...</div>
+    </div>
+    <!-- Simple back link that reloads the page without parameters -->
+    <a href="javascript:window.top.location.href = window.top.location.href.split('?')[0];" class="back-link">← Back to Dashboard</a>
+  </div>
+
+  <script>
+    window.onload = function() {
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(displayError)
+        .runAllServerTests();
+    };
+
+    function displayResults(results) {
+      const container = document.getElementById('results');
+      container.innerHTML = '';
+
+      if (!results || results.length === 0) {
+        container.innerHTML = '<div class="status-item failed"><span class="status-name">No results returned</span></div>';
+        return;
+      }
+
+      results.forEach(test => {
+        const item = document.createElement('div');
+        item.className = `status-item ${test.passed ? 'passed' : 'failed'}`;
+
+        const statusText = test.passed ? 'PASSED' : 'FAILED';
+
+        let html = `
+          <div>
+            <div class="status-name">${test.name}</div>
+            ${!test.passed ? `<div class="error-message">${test.message}</div>` : ''}
+          </div>
+          <div class="status-result">${statusText}</div>
+        `;
+
+        item.innerHTML = html;
+        container.appendChild(item);
+      });
+    }
+
+    function displayError(error) {
+      const container = document.getElementById('results');
+      container.innerHTML = `
+        <div class="status-item failed">
+          <div>
+            <div class="status-name">System Error</div>
+            <div class="error-message">${error.message}</div>
+          </div>
+          <div class="status-result">FAILED</div>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
