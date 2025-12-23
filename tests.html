@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Lexend', sans-serif;
+        background-color: #f3f4f6;
+        padding: 40px;
+        color: #1f2937;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #2d3f89; /* OPS Primary Blue */
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 10px;
+      }
+      .status-item {
+        border: 1px solid #e5e7eb;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .status-item.pass {
+        border-left: 5px solid #2d3f89; /* OPS Primary Blue */
+      }
+      .status-item.fail {
+        border-left: 5px solid #ad2122; /* OPS Primary Red */
+        background-color: #e5c7c7; /* Red Lighter */
+      }
+      .status-label {
+        font-weight: bold;
+        color: #333;
+      }
+      .status-value {
+        font-weight: bold;
+      }
+      .status-value.pass {
+        color: #2d3f89;
+      }
+      .status-value.fail {
+        color: #ad2122;
+      }
+      .message {
+        font-size: 0.9em;
+        color: #666;
+        margin-top: 5px;
+        display: block;
+      }
+      .fail .message {
+        color: #7a1718; /* Darker red for error text contrast */
+      }
+      #loading {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔭 System Health Diagnostic</h1>
+      <div id="loading">Running diagnostics...</div>
+      <div id="results"></div>
+    </div>
+
+    <script>
+      function showResults(results) {
+        const container = document.getElementById('results');
+        const loading = document.getElementById('loading');
+        loading.style.display = 'none';
+
+        if (!results || results.length === 0) {
+          container.innerHTML = '<div class="status-item fail"><span class="status-label">Error</span><span class="status-value fail">No results returned</span></div>';
+          return;
+        }
+
+        results.forEach(result => {
+          const div = document.createElement('div');
+          const isPass = result.status === 'PASS';
+          div.className = 'status-item ' + (isPass ? 'pass' : 'fail');
+
+          div.innerHTML = `
+            <div>
+              <div class="status-label">${result.name}</div>
+              <div class="message">${result.message}</div>
+            </div>
+            <div class="status-value ${isPass ? 'pass' : 'fail'}">${result.status}</div>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      function onFailure(error) {
+        const container = document.getElementById('results');
+        document.getElementById('loading').style.display = 'none';
+        container.innerHTML = `
+          <div class="status-item fail">
+            <div>
+              <span class="status-label">Execution Error</span>
+              <div class="message">${error.message}</div>
+            </div>
+            <span class="status-value fail">FAILED</span>
+          </div>`;
+      }
+
+      // Execute server-side tests
+      google.script.run
+        .withSuccessHandler(showResults)
+        .withFailureHandler(onFailure)
+        .runAllTests();
+    </script>
+  </body>
+</html>
