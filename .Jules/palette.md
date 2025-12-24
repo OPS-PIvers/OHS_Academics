@@ -1,0 +1,1 @@
+## 2024-05-22 - Brand Alignment **Learning:** Tailwind CDN configuration via a runtime script block is essential for enforcing custom brand palettes (colors, fonts) without a build step. **Action:** Always inject `tailwind.config` script before other scripts when working with CDN-based Tailwind in GAS.
