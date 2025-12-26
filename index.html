@@ -5,19 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OHS Academics & Attendance Dashboard</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ops: {
+                            primary: '#2d3f89',
+                            'blue-dark': '#1d2a5d',
+                            'blue-light': '#4356a9',
+                            'blue-lighter': '#eaecf5',
+                            red: '#ad2122',
+                            'red-dark': '#7a1718',
+                            'red-lighter': '#e5c7c7',
+                            gray: '#333333',
+                            'gray-dark': '#1a1a1a',
+                            'gray-light': '#f2f2f3',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Lexend', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2d3f89; }
+        body { font-family: 'Lexend', sans-serif; background-color: #2d3f89; }
         .chart-container { position: relative; height: 300px; width: 100%; }
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
         .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .kpi-value { font-size: 2.5rem; font-weight: 700; color: #2d3f89; }
         .kpi-label { font-size: 1rem; font-weight: 500; color: #4b5563; }
-        .ineligible-text { color: #ef4444; font-weight: 600; }
+        .ineligible-text { color: #ad2122; font-weight: 600; }
         .eligible-text { color: #22c55e; font-weight: 600; }
-        .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #374151; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-        .filter-btn:hover { background-color: #f3f4f6; }
+        .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #333333; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .filter-btn:hover { background-color: #f2f2f3; }
         .filter-btn.active { background-color: #2d3f89; color: white; border-color: #2d3f89; }
         select.filter-select {
             -webkit-appearance: none; -moz-appearance: none; appearance: none;
@@ -26,8 +51,9 @@
             padding: 0.5rem 2.5rem 0.5rem 0.75rem;
             border-radius: 0.5rem; border: 1px solid #d1d5db;
             transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: 'Lexend', sans-serif;
         }
-        select.filter-select:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3); }
+        select.filter-select:focus { outline: none; border-color: #4356a9; box-shadow: 0 0 0 2px rgba(67, 86, 169, 0.3); }
         .fixed-table { table-layout: fixed; width: 100%; }
         th[data-sort] { cursor: pointer; }
         .sort-icon { color: #9ca3af; font-size: 0.9em; vertical-align: middle; }
@@ -37,18 +63,19 @@
         /* Tooltip Styles */
         #tooltip {
             position: absolute; display: none;
-            background-color: #111827; color: white;
+            background-color: #1a1a1a; color: white;
             padding: 0.75rem; border-radius: 0.5rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             font-size: 0.875rem; max-width: 300px;
             z-index: 1000;
             transition: opacity 0.2s;
+            font-family: 'Lexend', sans-serif;
         }
         #tooltip h4 { font-weight: 600; margin-bottom: 0.5rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.5rem;}
         #tooltip ul { list-style: none; padding-left: 0; }
         #tooltip li { margin-top: 0.5rem; display: flex; justify-content: space-between; }
         #tooltip li span:first-child { color: #d1d5db; padding-right: 1rem; }
-        .ineligible-row { background-color: #fee2e2; } /* Light red for ineligible students */
+        .ineligible-row { background-color: #e5c7c7; } /* OPS Red Lighter */
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -60,8 +87,8 @@
         </header>
 
         <div id="loading-state" class="text-center py-16 bg-white rounded-lg">
-            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            <p class="mt-4 text-gray-600 font-medium">Loading and processing student data...</p>
+            <svg class="animate-spin h-8 w-8 text-ops-primary mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p class="mt-4 text-ops-gray font-medium">Loading and processing student data...</p>
         </div>
 
         <main id="dashboard-content" class="hidden">
@@ -76,11 +103,11 @@
             <div id="tab-content-students">
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Student Lookup Filters</h2>
-                        <button id="reset-student-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                        <h2 class="text-xl font-semibold text-ops-gray">Student Lookup Filters</h2>
+                        <button id="reset-student-filters-btn" class="text-sm font-medium text-ops-primary hover:text-ops-blue-dark transition">Clear Filters</button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <input type="text" id="student-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="student-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-ops-blue-light focus:ring-1 focus:ring-ops-blue-light">
                         <div>
                             <label for="student-activity-filter" class="sr-only">Filter by Activity</label>
                             <select id="student-activity-filter" class="filter-select w-full"></select>
@@ -98,15 +125,15 @@
             <div id="tab-content-visuals" class="hidden">
                  <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Global Dashboard Filters</h2>
+                        <h2 class="text-xl font-semibold text-ops-gray">Global Dashboard Filters</h2>
                         <div class="flex gap-4">
-                            <button id="export-infographic-btn" class="text-sm font-medium text-purple-600 hover:text-purple-800 transition flex items-center gap-1">
+                            <button id="export-infographic-btn" class="text-sm font-medium text-ops-primary hover:text-ops-blue-dark transition flex items-center gap-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
                                 Export Infographic
                             </button>
-                            <button id="reset-global-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                            <button id="reset-global-filters-btn" class="text-sm font-medium text-ops-primary hover:text-ops-blue-dark transition">Clear Filters</button>
                         </div>
                     </div>
                     <div id="global-filters" class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -147,12 +174,12 @@
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Absence Breakdown by Type</h2><div class="chart-container"><canvas id="attendance-breakdown-chart"></canvas></div></div>
-                    <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ineligibility Reasons</h2><div class="chart-container"><canvas id="ineligibility-chart"></canvas></div></div>
-                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Average Absences by Number of Failing Grades</h2><div class="chart-container"><canvas id="correlation-chart"></canvas></div></div>
-                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Performance: Activity vs. Non-Activity Students</h2><div class="chart-container"><canvas id="activity-chart"></canvas></div></div>
-                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Spartan Hour Request Breakdown</h2><div class="chart-container"><canvas id="spartan-hour-chart"></canvas></div></div>
-                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-gray-700 mb-4">Club Participation by Grade</h2><div class="chart-container"><canvas id="club-meetings-by-grade-chart"></canvas></div></div>
+                    <div class="card"><h2 class="text-xl font-semibold text-ops-gray mb-4">Absence Breakdown by Type</h2><div class="chart-container"><canvas id="attendance-breakdown-chart"></canvas></div></div>
+                    <div class="card"><h2 class="text-xl font-semibold text-ops-gray mb-4">Ineligibility Reasons</h2><div class="chart-container"><canvas id="ineligibility-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-ops-gray mb-4">Average Absences by Number of Failing Grades</h2><div class="chart-container"><canvas id="correlation-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-ops-gray mb-4">Performance: Activity vs. Non-Activity Students</h2><div class="chart-container"><canvas id="activity-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-ops-gray mb-4">Spartan Hour Request Breakdown</h2><div class="chart-container"><canvas id="spartan-hour-chart"></canvas></div></div>
+                    <div class="card lg:col-span-2"><h2 class="text-xl font-semibold text-ops-gray mb-4">Club Participation by Grade</h2><div class="chart-container"><canvas id="club-meetings-by-grade-chart"></canvas></div></div>
                 </div>
             </div>
 
@@ -166,15 +193,15 @@
                                 <h2 class="text-3xl font-bold text-gray-900 tracking-tight">OHS Academic Dashboard Executive Summary</h2>
                                 <p class="text-gray-500 mt-2 font-medium" id="infographic-date">Generated on: ...</p>
                             </div>
-                            <button onclick="closeInfographic()" class="text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-gray-100">
+                            <button onclick="closeInfographic()" class="text-gray-400 hover:text-ops-red transition p-2 rounded-full hover:bg-gray-100">
                                 <span class="sr-only">Close</span>
                                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
 
                         <!-- Active Filters Summary -->
-                        <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-8 shadow-sm">
-                            <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-3">View Context (Active Filters)</h3>
+                        <div class="bg-ops-blue-lighter border border-ops-blue-light p-4 rounded-lg mb-8 shadow-sm">
+                            <h3 class="text-xs font-bold text-ops-primary uppercase tracking-wider mb-3">View Context (Active Filters)</h3>
                             <div id="infographic-filters" class="flex flex-wrap gap-3"></div>
                         </div>
 
@@ -219,8 +246,8 @@
             <div id="tab-content-historical" class="hidden">
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Historical Snapshot Management</h2>
-                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create Snapshot Now">Create Snapshot Now</button>
+                        <h2 class="text-xl font-semibold text-ops-gray">Historical Snapshot Management</h2>
+                        <button id="create-snapshot-btn" class="px-4 py-2 bg-ops-primary text-white rounded-lg hover:bg-ops-blue-dark transition" aria-label="Create Snapshot Now">Create Snapshot Now</button>
                     </div>
                     <p class="text-sm text-gray-600 mb-4">Snapshots are automatically captured every Monday at 11:00 AM before the Tuesday data updates. View trends and compare data week-over-week.</p>
                     <!-- Inline notification message div -->
@@ -229,7 +256,7 @@
                 </div>
 
                 <div class="card mb-6">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Week-Over-Week Comparison</h2>
+                    <h2 class="text-xl font-semibold text-ops-gray mb-4">Week-Over-Week Comparison</h2>
                     <!-- Inline validation message div -->
                     <div id="comparison-message" class="hidden mb-4 p-3 rounded-lg" role="alert" aria-live="polite"></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -246,16 +273,16 @@
                             </select>
                         </div>
                     </div>
-                    <button id="compare-snapshots-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition" aria-label="Compare selected snapshots">Compare Snapshots</button>
+                    <button id="compare-snapshots-btn" class="px-4 py-2 bg-ops-primary text-white rounded-lg hover:bg-ops-blue-dark transition" aria-label="Compare selected snapshots">Compare Snapshots</button>
                     <div id="comparison-results" class="mt-4"></div>
                 </div>
 
                 <div id="historical-charts-container" class="hidden">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Students with Failing Grades Over Time</h2><div class="chart-container"><canvas id="historical-failing-chart"></canvas></div></div>
-                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Average Absences Over Time</h2><div class="chart-container"><canvas id="historical-absences-chart"></canvas></div></div>
-                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Unserved Detention Over Time</h2><div class="chart-container"><canvas id="historical-detention-chart"></canvas></div></div>
-                        <div class="card"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ineligibility Rate Over Time</h2><div class="chart-container"><canvas id="historical-ineligibility-chart"></canvas></div></div>
+                        <div class="card"><h2 class="text-xl font-semibold text-ops-gray mb-4">Students with Failing Grades Over Time</h2><div class="chart-container"><canvas id="historical-failing-chart"></canvas></div></div>
+                        <div class="card"><h2 class="text-xl font-semibold text-ops-gray mb-4">Average Absences Over Time</h2><div class="chart-container"><canvas id="historical-absences-chart"></canvas></div></div>
+                        <div class="card"><h2 class="text-xl font-semibold text-ops-gray mb-4">Unserved Detention Over Time</h2><div class="chart-container"><canvas id="historical-detention-chart"></canvas></div></div>
+                        <div class="card"><h2 class="text-xl font-semibold text-ops-gray mb-4">Ineligibility Rate Over Time</h2><div class="chart-container"><canvas id="historical-ineligibility-chart"></canvas></div></div>
                     </div>
                 </div>
             </div>
@@ -426,7 +453,7 @@
             });
         }
 
-        function handleError(error) { console.error("Dashboard Error:", error); document.getElementById('loading-state').innerHTML = `<p class="text-red-500 font-semibold">Error loading data.</p><p class="text-gray-600 mt-2">Please ensure the sheet '⭐Academics & Attendance Hub' exists and you have permission.</p>`; }
+        function handleError(error) { console.error("Dashboard Error:", error); document.getElementById('loading-state').innerHTML = `<p class="text-ops-red font-semibold">Error loading data.</p><p class="text-gray-600 mt-2">Please ensure the sheet '⭐Academics & Attendance Hub' exists and you have permission.</p>`; }
 
         function calculateGroupKPIs(data) {
             const totalStudents = data.length;
@@ -615,7 +642,7 @@
         }
 
         function renderChartsToCanvas(data, chartIds, storage) {
-            const chartColors = { blue: 'rgba(59, 130, 246, 0.7)', red: 'rgba(239, 68, 68, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)', purple: 'rgba(139, 92, 246, 0.7)', orange: 'rgba(249, 115, 22, 0.7)', gray: 'rgba(107, 114, 128, 0.7)' };
+            const chartColors = { blue: 'rgba(45, 63, 137, 0.7)', red: 'rgba(173, 33, 34, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)', purple: 'rgba(139, 92, 246, 0.7)', orange: 'rgba(249, 115, 22, 0.7)', gray: 'rgba(107, 114, 128, 0.7)' };
 
             // Destroy existing charts in this storage
             Object.values(storage).forEach(chart => {
@@ -723,7 +750,7 @@
 
         // Render charts from pre-computed aggregated data (for counselor "All Students" view)
         function renderChartsFromAggregated(chartData) {
-            const chartColors = { blue: 'rgba(59, 130, 246, 0.7)', red: 'rgba(239, 68, 68, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)', purple: 'rgba(139, 92, 246, 0.7)', orange: 'rgba(249, 115, 22, 0.7)', gray: 'rgba(107, 114, 128, 0.7)' };
+            const chartColors = { blue: 'rgba(45, 63, 137, 0.7)', red: 'rgba(173, 33, 34, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)', purple: 'rgba(139, 92, 246, 0.7)', orange: 'rgba(249, 115, 22, 0.7)', gray: 'rgba(107, 114, 128, 0.7)' };
             Object.values(charts).forEach(chart => chart.destroy());
 
             // Attendance breakdown
@@ -792,7 +819,7 @@
                  if(value === 'tier2') displayValue = 'Tier 2 Intervention';
 
                  const badge = document.createElement('span');
-                 badge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-white text-indigo-700 border border-indigo-200 shadow-sm';
+                 badge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-white text-ops-primary border border-ops-blue-light shadow-sm';
                  badge.textContent = `${label}: ${displayValue}`;
                  filterContainer.appendChild(badge);
              };
@@ -885,11 +912,11 @@
                          if (Math.abs(diff) > 0.01) {
                              if (METRIC_CONFIG.lowerIsBetter.has(def.key)) {
                                  // Lower is better. If diff > 0, comparison is HIGHER, so current is LOWER (Better) -> Green.
-                                 colorClass = diff > 0 ? 'text-green-600' : 'text-red-600';
+                                 colorClass = diff > 0 ? 'text-green-600' : 'text-ops-red';
                              } else {
                                  // Higher is better (participation).
                                  // If diff > 0, comparison > current. Current < Comparison => Worse => Red.
-                                 colorClass = diff > 0 ? 'text-red-600' : 'text-green-600';
+                                 colorClass = diff > 0 ? 'text-ops-red' : 'text-green-600';
                              }
                          }
 
@@ -903,12 +930,12 @@
                  if (percentOfTotal !== null && !isNaN(percentOfTotal)) {
                       compHtml += `<div class="flex justify-between text-xs mt-1 border-t pt-1">
                         <span class="text-gray-500">% of Total:</span>
-                        <span class="font-medium text-blue-600">${percentOfTotal.toFixed(1)}%</span>
+                        <span class="font-medium text-ops-primary">${percentOfTotal.toFixed(1)}%</span>
                      </div>`;
                  }
 
                  const card = document.createElement('div');
-                 card.className = 'bg-gray-50 rounded-xl p-5 border border-gray-200 hover:border-blue-300 transition-colors';
+                 card.className = 'bg-gray-50 rounded-xl p-5 border border-gray-200 hover:border-ops-blue-light transition-colors';
                  card.innerHTML = `
                     <p class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">${def.label}</p>
                     <p class="text-3xl font-bold text-gray-900 mb-3">${formatter(def.key, currentKpi)}</p>
@@ -1000,12 +1027,12 @@
             const listBody = document.getElementById('student-list'), noResults = document.getElementById('no-students-message');
             if (data.length === 0) { listBody.innerHTML = ''; noResults.classList.remove('hidden'); return; }
             noResults.classList.add('hidden');
-            listBody.innerHTML = data.map(s => `<tr class="${s.ineligible ? 'bg-red-50' : 'bg-white'}">
+            listBody.innerHTML = data.map(s => `<tr class="${s.ineligible ? 'bg-ops-red-lighter' : 'bg-white'}">
                 <td class="px-6 py-4 text-sm text-gray-500 text-center">${s.grade}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div>${s.caseManager ? `<div class="text-xs font-semibold text-blue-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="caseManager">Sp.Ed.</div>` : ''}${s.tier2Interventions || s.tier2Instructor ? `<div class="text-xs font-semibold text-purple-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="tier2">Tier 2</div>` : ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div>${s.caseManager ? `<div class="text-xs font-semibold text-ops-primary cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="caseManager">Sp.Ed.</div>` : ''}${s.tier2Interventions || s.tier2Instructor ? `<div class="text-xs font-semibold text-ops-blue-dark cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="tier2">Tier 2</div>` : ''}</td>
                 <td class="px-6 py-4 text-xs text-gray-500">${s.activity || ''}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.numFGrades > 0 ? 'border-2 border-red-700' : ''}" data-student='${JSON.stringify(s)}' data-type="failing">${s.numFGrades}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.unservedDetention > 0 ? 'border-2 border-red-700' : ''}" data-student='${JSON.stringify(s)}' data-type="detention">${s.unservedDetention} hrs</td>
+                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.numFGrades > 0 ? 'border-2 border-ops-red-dark' : ''}" data-student='${JSON.stringify(s)}' data-type="failing">${s.numFGrades}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.unservedDetention > 0 ? 'border-2 border-ops-red-dark' : ''}" data-student='${JSON.stringify(s)}' data-type="detention">${s.unservedDetention} hrs</td>
                 <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="absences">${s.totalAbsences}</td>
                 <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="spartanHour">${s.spartanHourTotalRequests} request${s.spartanHourTotalRequests === 1 ? '' : 's'}</td>
             </tr>`).join('');
@@ -1040,7 +1067,7 @@
                         const withF = noReq.filter(s => s.numFGrades > 0).length;
                         const withD = total - withF;
                         
-                        showTooltip(`<h4>D/F No Request Breakdown</h4><ul><li><span>Total:</span> <strong>${total}</strong></li><li><span>With Fs:</span> <strong class="text-red-500">${withF}</strong></li><li><span>With Ds:</span> <strong class="text-yellow-500">${withD}</strong></li></ul>`, kpiCard, triggerId);
+                        showTooltip(`<h4>D/F No Request Breakdown</h4><ul><li><span>Total:</span> <strong>${total}</strong></li><li><span>With Fs:</span> <strong class="text-ops-red">${withF}</strong></li><li><span>With Ds:</span> <strong class="text-yellow-500">${withD}</strong></li></ul>`, kpiCard, triggerId);
                         return;
                     }
 
@@ -1157,7 +1184,7 @@
                 .withSuccessHandler(response => {
                     if (!response || typeof response.trends === 'undefined' || typeof response.snapshotList === 'undefined') {
                         console.error('Received invalid response from getHistoricalDataForClient:', response);
-                        document.getElementById('snapshot-info').innerHTML = '<p class="text-red-500">Error: Invalid historical data received from server.</p>';
+                        document.getElementById('snapshot-info').innerHTML = '<p class="text-ops-red">Error: Invalid historical data received from server.</p>';
                         return;
                     }
                     historicalData = response.trends;
@@ -1170,7 +1197,7 @@
                 })
                 .withFailureHandler(error => {
                     console.error('Error loading historical data:', error);
-                    document.getElementById('snapshot-info').innerHTML = '<p class="text-red-500">Error loading historical data. Please try again.</p>';
+                    document.getElementById('snapshot-info').innerHTML = '<p class="text-ops-red">Error loading historical data. Please try again.</p>';
                 })
                 .getHistoricalDataForClient();
         }
@@ -1183,9 +1210,9 @@
                 const latestSnapshot = historicalData[historicalData.length - 1];
                 infoDiv.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="bg-ops-blue-lighter p-4 rounded-lg">
                             <p class="text-sm text-gray-600">Total Snapshots</p>
-                            <p class="text-2xl font-bold text-blue-700">${historicalData.length}</p>
+                            <p class="text-2xl font-bold text-ops-primary">${historicalData.length}</p>
                         </div>
                         <div class="bg-green-50 p-4 rounded-lg">
                             <p class="text-sm text-gray-600">Latest Snapshot</p>
@@ -1193,7 +1220,7 @@
                         </div>
                         <div class="bg-purple-50 p-4 rounded-lg">
                             <p class="text-sm text-gray-600">Students Tracked</p>
-                            <p class="text-2xl font-bold text-purple-700">${latestSnapshot.totalStudents}</p>
+                            <p class="text-2xl font-bold text-ops-primary">${latestSnapshot.totalStudents}</p>
                         </div>
                     </div>
                 `;
@@ -1217,7 +1244,7 @@
             if (!historicalData || historicalData.length === 0) return;
 
             document.getElementById('historical-charts-container').classList.remove('hidden');
-            const chartColors = { blue: 'rgba(59, 130, 246, 0.7)', red: 'rgba(239, 68, 68, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)' };
+            const chartColors = { blue: 'rgba(45, 63, 137, 0.7)', red: 'rgba(173, 33, 34, 0.7)', yellow: 'rgba(234, 179, 8, 0.7)', green: 'rgba(34, 197, 94, 0.7)' };
 
             const labels = historicalData.map(d => d.formattedDate);
 
@@ -1341,9 +1368,9 @@
             if (type === 'success') {
                 messageDiv.classList.add('bg-green-100', 'text-green-800');
             } else if (type === 'error') {
-                messageDiv.classList.add('bg-red-100', 'text-red-800');
+                messageDiv.classList.add('bg-ops-red-lighter', 'text-ops-red-dark');
             } else {
-                messageDiv.classList.add('bg-blue-100', 'text-blue-800');
+                messageDiv.classList.add('bg-ops-blue-lighter', 'text-ops-blue-dark');
             }
 
             messageDiv.textContent = message;
@@ -1368,8 +1395,8 @@
 
             if (delta > 0) {
                 if (isConcerning) {
-                    rowColor = 'bg-red-50';
-                    deltaColor = 'text-red-700 font-semibold';
+                    rowColor = 'bg-ops-red-lighter';
+                    deltaColor = 'text-ops-red-dark font-semibold';
                     arrow = '↑';
                     textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
                 } else {
@@ -1385,8 +1412,8 @@
                     arrow = '↓';
                     textIndicator = '<span class="text-xs font-bold">[BETTER]</span> ';
                 } else {
-                    rowColor = 'bg-red-50';
-                    deltaColor = 'text-red-700 font-semibold';
+                    rowColor = 'bg-ops-red-lighter';
+                    deltaColor = 'text-ops-red-dark font-semibold';
                     arrow = '↓';
                     textIndicator = '<span class="text-xs font-bold">[WORSE]</span> ';
                 }
@@ -1458,7 +1485,7 @@
                         displayComparisonResults(comparison);
                     })
                     .withFailureHandler(error => {
-                        document.getElementById('comparison-results').innerHTML = '<p class="text-red-500">Error comparing snapshots: ' + formatErrorMessage(error) + '</p>';
+                        document.getElementById('comparison-results').innerHTML = '<p class="text-ops-red">Error comparing snapshots: ' + formatErrorMessage(error) + '</p>';
                     })
                     .compareSnapshots(parseInt(date1), parseInt(date2));
             });
@@ -1466,11 +1493,11 @@
 
         function displayComparisonResults(comparison) {
             if (!comparison) {
-                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">No data available for comparison.</p>`;
+                document.getElementById('comparison-results').innerHTML = `<p class="text-ops-red">No data available for comparison.</p>`;
                 return;
             }
             if (comparison.error) {
-                document.getElementById('comparison-results').innerHTML = `<p class="text-red-500">${comparison.error}</p>`;
+                document.getElementById('comparison-results').innerHTML = `<p class="text-ops-red">${comparison.error}</p>`;
                 return;
             }
 
@@ -1542,4 +1569,3 @@
     </script>
 </body>
 </html>
-
