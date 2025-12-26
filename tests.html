@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Lexend', sans-serif;
+        background-color: #f3f4f6;
+        padding: 40px;
+        color: #1f2937;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #2d3f89; /* OPS Tech Primary Blue */
+        margin-top: 0;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 15px;
+      }
+      .status-item {
+        border: 1px solid #e5e7eb;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .status-item.pass {
+        border-left: 5px solid #2d3f89; /* OPS Tech Primary Blue */
+        background-color: #f0f7ff;
+      }
+      .status-item.fail {
+        border-left: 5px solid #ad2122; /* OPS Tech Primary Red */
+        background-color: #e5c7c7; /* Red Lighter from Palette */
+      }
+      .test-name {
+        font-weight: 600;
+        font-size: 16px;
+      }
+      .test-message {
+        font-size: 14px;
+        color: #4b5563;
+        margin-top: 5px;
+      }
+      .badge {
+        font-weight: bold;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      .badge.pass {
+        color: #2d3f89;
+        background-color: #dbeafe;
+      }
+      .badge.fail {
+        color: #7a1718; /* Red Dark */
+        background-color: #fecaca;
+      }
+      #loading {
+        text-align: center;
+        color: #6b7280;
+        padding: 20px;
+      }
+      .error-details {
+        display: block;
+        font-family: monospace;
+        background: rgba(255,255,255,0.5);
+        padding: 5px;
+        margin-top: 5px;
+        border-radius: 4px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔭 System Health Diagnostic</h1>
+      <p style="margin-bottom: 20px;">Running automated checks and unit tests...</p>
+
+      <div id="loading">
+        Scanning system...
+      </div>
+
+      <div id="results"></div>
+
+      <div style="margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: right;">
+        <button onclick="runTests()" style="background-color: #2d3f89; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-family: 'Lexend', sans-serif; cursor: pointer;">Rerun Tests</button>
+      </div>
+    </div>
+
+    <script>
+      function runTests() {
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('loading').style.display = 'block';
+
+        google.script.run
+          .withSuccessHandler(showResults)
+          .withFailureHandler(showError)
+          .runAllTests();
+      }
+
+      function showResults(results) {
+        document.getElementById('loading').style.display = 'none';
+        const container = document.getElementById('results');
+
+        if (!results || results.length === 0) {
+          container.innerHTML = '<div class="status-item fail"><span class="test-name">No results returned</span></div>';
+          return;
+        }
+
+        results.forEach(result => {
+          const div = document.createElement('div');
+          div.className = `status-item ${result.passed ? 'pass' : 'fail'}`;
+
+          const icon = result.passed ? '✅' : '❌';
+          const badgeClass = result.passed ? 'pass' : 'fail';
+          const badgeText = result.passed ? 'PASSED' : 'FAILED';
+
+          let content = `
+            <div>
+              <div class="test-name">${icon} ${result.name}</div>
+              <div class="test-message">${result.message}</div>
+            </div>
+            <div class="badge ${badgeClass}">${badgeText}</div>
+          `;
+
+          div.innerHTML = content;
+          container.appendChild(div);
+        });
+      }
+
+      function showError(error) {
+        document.getElementById('loading').style.display = 'none';
+        const container = document.getElementById('results');
+        container.innerHTML = `
+          <div class="status-item fail">
+            <div>
+              <div class="test-name">⚠️ Execution Error</div>
+              <div class="test-message">Failed to run tests: ${error.message}</div>
+            </div>
+            <div class="badge fail">ERROR</div>
+          </div>
+        `;
+      }
+
+      // Auto-run on load
+      window.onload = runTests;
+    </script>
+  </body>
+</html>

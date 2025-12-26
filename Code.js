@@ -895,10 +895,23 @@ function getUserRole() {
 
 /**
  * Serves the HTML for the web app dashboard.
+ * @param {Object} e - The event object containing request parameters.
  * @returns {HtmlOutput} The HTML output for the web app.
  */
-function doGet() {
+function doGet(e) {
   const userInfo = getUserRole();
+
+  // Route to System Health Diagnostic page if requested and user is ADMIN
+  if (e && e.parameter && e.parameter.page === 'tests') {
+    if (userInfo && userInfo.role === 'ADMIN') {
+      return HtmlService.createTemplateFromFile('tests').evaluate()
+        .setTitle("System Health Diagnostic")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } else {
+      return HtmlService.createHtmlOutput("Access Denied: Admin privileges required for diagnostic tools.")
+        .setTitle("Access Denied");
+    }
+  }
 
   // If user not in Staff Roles, show access denied page
   if (!userInfo) {
