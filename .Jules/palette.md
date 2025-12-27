@@ -1,0 +1,1 @@
+## 2024-02-14 - Font Standardization Violation **Learning:** The application was using the 'Inter' font family, which violates the OPS Tech Brand Guidelines requiring 'Lexend' for all text. **Action:** Replaced the Google Fonts import with Lexend and updated the Tailwind configuration to enforce Lexend as the default sans-serif font.

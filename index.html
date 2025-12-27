@@ -6,9 +6,32 @@
     <title>OHS Academics & Attendance Dashboard</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ops-primary': '#2d3f89',
+                        'ops-blue-dark': '#1d2a5d',
+                        'ops-blue-light': '#4356a9',
+                        'ops-blue-lighter': '#eaecf5',
+                        'ops-red': '#ad2122',
+                        'ops-red-dark': '#7a1718',
+                        'ops-red-lighter': '#e5c7c7',
+                        'ops-gray': '#333333',
+                        'ops-gray-dark': '#1a1a1a',
+                        'ops-gray-light': '#f2f2f3',
+                    },
+                    fontFamily: {
+                        sans: ['Lexend', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2d3f89; }
+        body { font-family: 'Lexend', sans-serif; background-color: #2d3f89; }
         .chart-container { position: relative; height: 300px; width: 100%; }
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
         .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
