@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>System Health Diagnostic</title>
+    <!-- OPS Tech Brand Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Lexend', sans-serif;
+        background-color: #f3f4f6;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .container {
+        width: 100%;
+        max-width: 800px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+      }
+      h1 {
+        color: #2d3f89; /* OPS Primary Blue */
+        margin-top: 0;
+        border-bottom: 2px solid #eaecf5;
+        padding-bottom: 15px;
+      }
+      .status-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #ffffff;
+      }
+      /* Passed State - OPS Primary Blue Accents */
+      .status-card.passed {
+        border-left: 5px solid #2d3f89;
+      }
+      .status-card.passed .test-name {
+        color: #333333;
+      }
+
+      /* Failed State - OPS Red styling as per Brand Guidelines */
+      .status-card.failed {
+        border: 1px solid #ad2122;
+        border-left: 5px solid #ad2122; /* Keep left border for consistency, but thicker/colored */
+        background-color: #e5c7c7; /* OPS Red Lighter */
+      }
+      .status-card.failed .test-name {
+        color: #7a1718; /* OPS Red Dark */
+      }
+      .status-card.failed .test-message {
+        color: #7a1718; /* OPS Red Dark */
+      }
+
+      .test-name {
+        font-weight: 500;
+        font-size: 16px;
+      }
+      .test-message {
+        font-size: 14px;
+        color: #666;
+        margin-top: 5px;
+      }
+      .badge {
+        font-weight: bold;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .badge.passed {
+        background-color: #eaecf5; /* OPS Blue Lighter */
+        color: #2d3f89; /* OPS Primary Blue */
+      }
+      .badge.failed {
+        background-color: #ffffff; /* White to pop on red background */
+        color: #ad2122; /* OPS Primary Red */
+        border: 1px solid #ad2122;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #2d3f89;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      #results-area {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔭 System Health Diagnostic</h1>
+      <p>Running server-side integrity checks and unit tests...</p>
+
+      <div id="loading">
+        <div class="spinner"></div>
+      </div>
+
+      <div id="results-area">
+        <!-- Results will be injected here -->
+      </div>
+
+      <div style="margin-top: 30px; text-align: center;">
+        <button onclick="runTests()" style="background-color: #2d3f89; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-family: 'Lexend', sans-serif;">Rerun Diagnostics</button>
+        <a href="?page=dashboard" style="display: block; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px;">&larr; Return to Dashboard</a>
+      </div>
+    </div>
+
+    <script>
+      function runTests() {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('results-area').style.display = 'none';
+
+        google.script.run
+          .withSuccessHandler(showResults)
+          .withFailureHandler(showError)
+          .runAllTests();
+      }
+
+      function showResults(results) {
+        const container = document.getElementById('results-area');
+        container.innerHTML = '';
+
+        results.forEach(result => {
+          const card = document.createElement('div');
+          card.className = `status-card ${result.passed ? 'passed' : 'failed'}`;
+
+          const infoDiv = document.createElement('div');
+
+          const nameEl = document.createElement('div');
+          nameEl.className = 'test-name';
+          nameEl.textContent = result.name;
+          infoDiv.appendChild(nameEl);
+
+          const msgEl = document.createElement('div');
+          msgEl.className = 'test-message';
+          msgEl.textContent = result.message;
+          infoDiv.appendChild(msgEl);
+
+          const badge = document.createElement('div');
+          badge.className = `badge ${result.passed ? 'passed' : 'failed'}`;
+          badge.textContent = result.passed ? 'PASSED' : 'FAILED';
+
+          card.appendChild(infoDiv);
+          card.appendChild(badge);
+          container.appendChild(card);
+        });
+
+        document.getElementById('loading').style.display = 'none';
+        container.style.display = 'block';
+      }
+
+      function showError(error) {
+        const container = document.getElementById('results-area');
+        container.innerHTML = `<div class="status-card failed">
+          <div>
+            <div class="test-name">System Error</div>
+            <div class="test-message">${error.message}</div>
+          </div>
+          <div class="badge failed">ERROR</div>
+        </div>`;
+        document.getElementById('loading').style.display = 'none';
+        container.style.display = 'block';
+      }
+
+      // Run immediately on load
+      window.onload = runTests;
+    </script>
+  </body>
+</html>

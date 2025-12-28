@@ -230,6 +230,21 @@ function compareSnapshots(date1, date2) {
       };
     }
 
+    return calculateSnapshotDiff(snapshot1, snapshot2);
+  } catch (e) {
+    Logger.log(`Error comparing snapshots: ${e.message}`);
+    return { error: e.message };
+  }
+}
+
+/**
+ * Pure function to calculate differences between two snapshots.
+ * Isolated for testing.
+ * @param {Object} snapshot1 - The older snapshot object.
+ * @param {Object} snapshot2 - The newer snapshot object.
+ * @returns {Object} Comparison result with changes and allMetrics.
+ */
+function calculateSnapshotDiff(snapshot1, snapshot2) {
     // Use centralized config (exclude date column from comparison)
     const metricsToCompare = SNAPSHOT_METRICS_CONFIG.filter(m => m.key !== 'snapshotDate');
 
@@ -267,10 +282,6 @@ function compareSnapshots(date1, date2) {
         value2: metric.precision && typeof snapshot2[metric.key] === 'number' ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
       }))
     };
-  } catch (e) {
-    Logger.log(`Error comparing snapshots: ${e.message}`);
-    return { error: e.message };
-  }
 }
 
 /**
@@ -897,7 +908,7 @@ function getUserRole() {
  * Serves the HTML for the web app dashboard.
  * @returns {HtmlOutput} The HTML output for the web app.
  */
-function doGet() {
+function doGet(e) {
   const userInfo = getUserRole();
 
   // If user not in Staff Roles, show access denied page
@@ -953,6 +964,14 @@ function doGet() {
   }
 
   // Serve dashboard with role information
+  // ROUTING: Check if user wants the 'tests' page and has ADMIN access
+  if (e && e.parameter && e.parameter.page === 'tests' && userInfo.role === 'ADMIN') {
+     const template = HtmlService.createTemplateFromFile('tests');
+     return template.evaluate()
+        .setTitle("System Health Diagnostic")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   const template = HtmlService.createTemplateFromFile('index');
   template.userRole = userInfo.role;
   template.userName = userInfo.name;
