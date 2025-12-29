@@ -897,8 +897,19 @@ function getUserRole() {
  * Serves the HTML for the web app dashboard.
  * @returns {HtmlOutput} The HTML output for the web app.
  */
-function doGet() {
+function doGet(e) {
   const userInfo = getUserRole();
+
+  // Route to diagnostic page if requested (ADMIN only)
+  if (e && e.parameter && e.parameter.page === 'tests') {
+    if (userInfo && userInfo.role === 'ADMIN') {
+      return HtmlService.createTemplateFromFile('tests').evaluate()
+         .setTitle("System Diagnostics")
+         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } else {
+       return HtmlService.createHtmlOutput("Access Denied: Admin role required for diagnostics.");
+    }
+  }
 
   // If user not in Staff Roles, show access denied page
   if (!userInfo) {
