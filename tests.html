@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Health Diagnostic</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Lexend', 'sans-serif'],
+            },
+            colors: {
+              ops: {
+                primary: '#2d3f89',
+                'blue-dark': '#1d2a5d',
+                'blue-light': '#4356a9',
+                'blue-lighter': '#eaecf5',
+                red: '#ad2122',
+                'red-dark': '#7a1718',
+                'red-lighter': '#e5c7c7',
+                gray: '#333333',
+                'gray-dark': '#1a1a1a',
+                'gray-light': '#f2f2f3',
+              }
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-gray-50 p-8 font-sans">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+        <header class="bg-ops-primary p-6">
+            <h1 class="text-2xl font-bold text-white flex items-center">
+                <span class="mr-2">🔭</span> System Health Diagnostic
+            </h1>
+            <p class="text-blue-200 mt-1">OPS Tech Reliability Check</p>
+        </header>
+
+        <div class="p-6">
+            <div id="loading" class="text-center py-12">
+                <svg class="animate-spin h-10 w-10 text-ops-primary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-gray-600 font-medium">Running diagnostic checks...</p>
+            </div>
+
+            <div id="results" class="hidden space-y-8">
+                <!-- Overall Status -->
+                <div id="overall-status-container" class="p-4 rounded-lg border flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">Overall Status</h2>
+                        <p class="text-sm text-gray-500" id="timestamp"></p>
+                    </div>
+                    <span id="overall-status-badge" class="px-4 py-2 rounded-full font-bold text-white"></span>
+                </div>
+
+                <!-- Section: Critical Sheets -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Critical Sheets</h3>
+                    <div id="sheets-list" class="space-y-2"></div>
+                </div>
+
+                <!-- Section: Data Integrity -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Data Integrity</h3>
+                    <div id="data-list" class="space-y-2"></div>
+                </div>
+
+                <!-- Section: Configuration -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Configuration</h3>
+                    <div id="config-list" class="space-y-2"></div>
+                </div>
+
+                 <!-- Section: Unit Tests -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Unit Tests</h3>
+                    <div id="tests-list" class="space-y-2"></div>
+                </div>
+
+                <div class="pt-6 border-t mt-8 text-center">
+                    <a href="<?= ScriptApp.getService().getUrl() ?>" class="inline-block px-6 py-2 bg-ops-primary text-white font-medium rounded hover:bg-ops-blue-dark transition-colors">
+                        Return to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <div id="error-message" class="hidden p-4 bg-ops-red-lighter border border-ops-red rounded text-ops-red-dark">
+                <p class="font-bold">Error running diagnostics:</p>
+                <p id="error-text"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            google.script.run
+                .withSuccessHandler(renderReport)
+                .withFailureHandler(showError)
+                .getSystemHealth();
+
+             google.script.run
+                .withSuccessHandler(renderTests)
+                .withFailureHandler(console.error)
+                .runAllTests();
+        });
+
+        function renderReport(report) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('results').classList.remove('hidden');
+
+            // Timestamp
+            document.getElementById('timestamp').textContent = new Date(report.timestamp).toLocaleString();
+
+            // Overall Status
+            const statusBadge = document.getElementById('overall-status-badge');
+            const statusContainer = document.getElementById('overall-status-container');
+
+            if (report.overallStatus === 'PASS') {
+                statusBadge.textContent = 'SYSTEM HEALTHY';
+                statusBadge.className = 'px-4 py-2 rounded-full font-bold text-white bg-ops-primary';
+                statusContainer.className = 'p-4 rounded-lg border border-ops-blue-lighter bg-blue-50 flex justify-between items-center';
+            } else {
+                statusBadge.textContent = 'ATTENTION REQUIRED';
+                statusBadge.className = 'px-4 py-2 rounded-full font-bold text-white bg-ops-red';
+                statusContainer.className = 'p-4 rounded-lg border border-ops-red-lighter bg-red-50 flex justify-between items-center';
+            }
+
+            // Render Sections
+            renderItems('sheets-list', report.sheets);
+            renderItems('data-list', report.dataValidation);
+            renderItems('config-list', report.configuration);
+        }
+
+        function renderTests(results) {
+             const container = document.getElementById('tests-list');
+             results.forEach(test => {
+                const item = document.createElement('div');
+
+                const isPass = test.passed;
+                const bgColor = isPass ? 'bg-white' : 'bg-ops-red-lighter';
+                const borderColor = isPass ? 'border-gray-200' : 'border-ops-red';
+                const textColor = isPass ? 'text-gray-800' : 'text-ops-red-dark';
+                const statusColor = isPass ? 'text-ops-primary' : 'text-ops-red';
+                const statusText = isPass ? 'PASSED' : 'FAILED';
+
+                item.className = `p-3 border rounded flex justify-between items-center ${bgColor} ${borderColor}`;
+                item.innerHTML = `
+                    <div>
+                        <span class="font-bold ${textColor}">${test.name}</span>
+                        <p class="text-xs text-gray-500">${test.message}</p>
+                    </div>
+                    <span class="font-bold ${statusColor}">${statusText}</span>
+                `;
+                container.appendChild(item);
+             });
+        }
+
+        function renderItems(containerId, items) {
+            const container = document.getElementById(containerId);
+            items.forEach(item => {
+                const div = document.createElement('div');
+                const isPass = item.status === 'PASS';
+                const isWarn = item.status === 'WARN';
+
+                let bgColor = 'bg-white';
+                let borderColor = 'border-gray-200';
+                let textColor = 'text-gray-800';
+                let statusColor = 'text-ops-primary';
+
+                if (!isPass) {
+                    if (isWarn) {
+                         bgColor = 'bg-yellow-50';
+                         borderColor = 'border-yellow-200';
+                         textColor = 'text-yellow-800';
+                         statusColor = 'text-yellow-600';
+                    } else {
+                         bgColor = 'bg-ops-red-lighter';
+                         borderColor = 'border-ops-red';
+                         textColor = 'text-ops-red-dark';
+                         statusColor = 'text-ops-red';
+                    }
+                }
+
+                div.className = `p-3 border rounded flex justify-between items-center ${bgColor} ${borderColor}`;
+                div.innerHTML = `
+                    <div>
+                        <span class="font-bold ${textColor}">${item.name}</span>
+                        <p class="text-xs text-gray-500">${item.message}</p>
+                    </div>
+                    <span class="font-bold ${statusColor}">${item.status}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function showError(error) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error-message').classList.remove('hidden');
+            document.getElementById('error-text').textContent = error.message || error;
+        }
+    </script>
+</body>
+</html>
