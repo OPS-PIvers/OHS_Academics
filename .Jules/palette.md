@@ -1,0 +1,1 @@
+## 2024-05-23 - Critical Brand Font Violation **Learning:** The application was using the 'Inter' font, which violates the OPS Tech Brand Guidelines requiring 'Lexend' exclusively. **Action:** Updating `index.html` to import and use Lexend, and configuring Tailwind to set it as the default sans font.
