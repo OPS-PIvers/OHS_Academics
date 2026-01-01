@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>System Health Diagnostic</title>
+    <!-- OPS Tech Brand Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --ops-primary: #2d3f89;
+        --ops-blue-dark: #1d2a5d;
+        --ops-blue-light: #4356a9;
+        --ops-blue-lighter: #eaecf5;
+        --ops-red: #ad2122;
+        --ops-red-dark: #7a1718;
+        --ops-red-lighter: #e5c7c7;
+        --ops-gray: #333333;
+        --ops-gray-light: #f2f2f3;
+      }
+
+      body {
+        font-family: 'Lexend', sans-serif;
+        color: var(--ops-gray);
+        background-color: #f9fafb;
+        margin: 0;
+        padding: 2rem;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+      }
+
+      h1 {
+        color: var(--ops-primary);
+        margin-top: 0;
+        border-bottom: 2px solid var(--ops-blue-lighter);
+        padding-bottom: 1rem;
+      }
+
+      .section {
+        margin-top: 2rem;
+      }
+
+      .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--ops-blue-dark);
+        margin-bottom: 1rem;
+      }
+
+      .status-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        background-color: white;
+      }
+
+      .status-item.fail {
+        border-color: var(--ops-red);
+        background-color: var(--ops-red-lighter);
+      }
+
+      .status-item.pass {
+        border-color: #e5e7eb; /* Default border for pass, or maybe blue-lighter? User said generic border is ok but pass text is blue */
+      }
+
+      .status-label {
+        font-weight: 500;
+      }
+
+      .status-label.fail {
+        color: var(--ops-red-dark);
+      }
+
+      .status-value {
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .status-value.pass {
+        color: var(--ops-primary);
+      }
+
+      .status-value.fail {
+        color: var(--ops-red);
+      }
+
+      #loading {
+        text-align: center;
+        color: var(--ops-blue-light);
+        padding: 2rem;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(45, 63, 137, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--ops-primary);
+        animation: spin 1s ease-in-out infinite;
+        margin-bottom: 1rem;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .overall-status {
+        text-align: center;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        font-size: 1.5rem;
+        font-weight: bold;
+      }
+
+      .overall-pass {
+        background-color: var(--ops-blue-lighter);
+        color: var(--ops-primary);
+        border: 2px solid var(--ops-primary);
+      }
+
+      .overall-fail {
+        background-color: var(--ops-red-lighter);
+        color: var(--ops-red);
+        border: 2px solid var(--ops-red);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>System Health Diagnostic</h1>
+
+      <div id="loading">
+        <div class="spinner"></div>
+        <p>Running system checks...</p>
+      </div>
+
+      <div id="results" style="display: none;">
+        <div id="overall-status-banner" class="overall-status"></div>
+
+        <div class="section">
+          <div class="section-title">Critical Sheets</div>
+          <div id="sheet-results"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Data Integrity</div>
+          <div id="data-results"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Unit Tests</div>
+          <div id="test-results"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function renderResults(results) {
+        document.getElementById('loading').style.display = 'none';
+        const resultsContainer = document.getElementById('results');
+        resultsContainer.style.display = 'block';
+
+        // Overall Status
+        const overallBanner = document.getElementById('overall-status-banner');
+        if (results.overallStatus === 'PASS') {
+          overallBanner.textContent = 'SYSTEM HEALTHY';
+          overallBanner.className = 'overall-status overall-pass';
+        } else {
+          overallBanner.textContent = 'SYSTEM ISSUES DETECTED';
+          overallBanner.className = 'overall-status overall-fail';
+        }
+
+        // Helper to create status item
+        function createStatusItem(label, isPass) {
+          const div = document.createElement('div');
+          div.className = 'status-item ' + (isPass ? 'pass' : 'fail');
+
+          const labelSpan = document.createElement('span');
+          labelSpan.className = 'status-label ' + (isPass ? '' : 'fail');
+          labelSpan.textContent = label;
+
+          const valueSpan = document.createElement('span');
+          valueSpan.className = 'status-value ' + (isPass ? 'pass' : 'fail');
+          valueSpan.textContent = isPass ? 'PASSED' : 'FAILED';
+
+          div.appendChild(labelSpan);
+          div.appendChild(valueSpan);
+          return div;
+        }
+
+        // Sheets
+        const sheetContainer = document.getElementById('sheet-results');
+        for (const [name, exists] of Object.entries(results.sheets)) {
+          sheetContainer.appendChild(createStatusItem(name + ' Exists', exists));
+        }
+
+        // Data
+        const dataContainer = document.getElementById('data-results');
+        for (const [check, passed] of Object.entries(results.data)) {
+          dataContainer.appendChild(createStatusItem(check, passed));
+        }
+
+        // Unit Tests
+        const testContainer = document.getElementById('test-results');
+        for (const [testName, passed] of Object.entries(results.unitTests)) {
+          testContainer.appendChild(createStatusItem(testName, passed));
+        }
+      }
+
+      function onFailure(error) {
+        document.getElementById('loading').innerHTML = `
+          <p style="color: #ad2122; font-weight: bold;">Error running diagnostics:</p>
+          <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px; overflow-x: auto;">${error.message}</pre>
+        `;
+      }
+
+      // Start checks on load
+      google.script.run
+        .withSuccessHandler(renderResults)
+        .withFailureHandler(onFailure)
+        .getSystemHealth();
+    </script>
+  </body>
+</html>
