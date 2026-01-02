@@ -895,10 +895,24 @@ function getUserRole() {
 
 /**
  * Serves the HTML for the web app dashboard.
+ * @param {Object} e - The event parameter.
  * @returns {HtmlOutput} The HTML output for the web app.
  */
-function doGet() {
+function doGet(e) {
   const userInfo = getUserRole();
+
+  // Check for Diagnostic Page Request (Admin Only)
+  if (e && e.parameter && e.parameter.page === 'tests') {
+    if (userInfo && userInfo.role === 'ADMIN') {
+      return HtmlService.createTemplateFromFile('tests')
+        .evaluate()
+        .setTitle("System Health Diagnostic")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } else {
+       // Fall through to Access Denied if not admin
+       return HtmlService.createHtmlOutput("<h1>Access Denied</h1><p>Diagnostic tools are for Administrators only.</p>");
+    }
+  }
 
   // If user not in Staff Roles, show access denied page
   if (!userInfo) {
@@ -962,6 +976,21 @@ function doGet() {
       .setTitle("OHS Academics & Attendance Dashboard")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
+// ===============================================================
+// DIAGNOSTIC ROUTING
+// ===============================================================
+
+/**
+ * Modified doGet to support diagnostic tools page.
+ * Ideally, we should merge this logic into the main doGet, but since I cannot
+ * see the full `doGet` parameters in the snippet above (it takes `e`),
+ * I am adding a specific check here.
+ *
+ * NOTE: The existing doGet does not take 'e' in the definition I read above: `function doGet() {`.
+ * Apps Script passes 'e' automatically. I will overwrite the existing doGet
+ * to handle the 'page' parameter.
+ */
 
 /**
  * Helper function to generate a consistent name key for comparison.

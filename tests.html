@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Health Diagnostic</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Lexend', sans-serif;
+      background-color: #f3f4f6;
+      color: #333;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2d3f89; /* OPS Primary Blue */
+      border-bottom: 2px solid #eaecf5; /* OPS Blue Lighter */
+      padding-bottom: 15px;
+      margin-top: 0;
+    }
+    .status-card {
+      padding: 15px;
+      margin-bottom: 15px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-card.pass {
+      border-left: 5px solid #2d3f89;
+      background-color: #eaecf5; /* OPS Blue Lighter */
+    }
+    .status-card.fail {
+      border-left: 5px solid #ad2122; /* OPS Red */
+      background-color: #e5c7c7; /* OPS Red Lighter */
+    }
+    .label {
+      font-weight: 500;
+      font-size: 1.1em;
+    }
+    .badge {
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background-color: #ffffff;
+    }
+    .badge.pass {
+      color: #2d3f89;
+      border: 1px solid #2d3f89;
+    }
+    .badge.fail {
+      color: #7a1718; /* OPS Red Dark */
+      border: 1px solid #ad2122;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      padding: 40px;
+    }
+    .header-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    button {
+        background-color: #2d3f89;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        font-family: 'Lexend', sans-serif;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    button:hover {
+        background-color: #1d2a5d;
+    }
+    button:disabled {
+        background-color: #9ca3af;
+        cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-actions">
+        <h1>🔭 Scout: System Health Diagnostic</h1>
+        <button id="runBtn" onclick="runDiagnostics()">Re-run Checks</button>
+    </div>
+
+    <div id="results">
+      <div class="loading">Running diagnostics...</div>
+    </div>
+  </div>
+
+  <script>
+    function runDiagnostics() {
+      const btn = document.getElementById('runBtn');
+      const resultsDiv = document.getElementById('results');
+
+      // Update UI state
+      btn.disabled = true;
+      btn.innerText = 'Running...';
+      resultsDiv.innerHTML = '<div class="loading">Running diagnostics...</div>';
+
+      google.script.run
+        .withSuccessHandler(renderResults)
+        .withFailureHandler(renderError)
+        .getSystemHealth();
+    }
+
+    function renderResults(health) {
+      const btn = document.getElementById('runBtn');
+      const resultsDiv = document.getElementById('results');
+
+      // Reset button
+      btn.disabled = false;
+      btn.innerText = 'Re-run Checks';
+      resultsDiv.innerHTML = ''; // Clear loading
+
+      // Overall Status
+      const summaryDiv = document.createElement('div');
+      summaryDiv.style.marginBottom = '20px';
+      summaryDiv.innerHTML = `<strong>Overall Status:</strong> <span style="color: ${health.status === 'HEALTHY' ? '#2d3f89' : '#ad2122'}; font-weight: bold;">${health.status}</span>`;
+      resultsDiv.appendChild(summaryDiv);
+
+      // Render Checks
+      health.checks.forEach(check => {
+        const card = document.createElement('div');
+        card.className = `status-card ${check.passed ? 'pass' : 'fail'}`;
+
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = check.name;
+
+        const rightSide = document.createElement('div');
+        rightSide.style.textAlign = 'right';
+
+        const message = document.createElement('div');
+        message.style.fontSize = '0.9em';
+        message.style.color = check.passed ? '#333' : '#7a1718';
+        message.textContent = check.message;
+
+        const badge = document.createElement('span');
+        badge.className = `badge ${check.passed ? 'pass' : 'fail'}`;
+        badge.textContent = check.passed ? 'PASSED' : 'FAILED';
+
+        rightSide.appendChild(badge);
+        rightSide.appendChild(message);
+
+        card.appendChild(label);
+        card.appendChild(rightSide);
+        resultsDiv.appendChild(card);
+      });
+
+      // Add Client-Side Check
+      const clientCard = document.createElement('div');
+      clientCard.className = 'status-card pass';
+      clientCard.innerHTML = `
+        <span class="label">Client API Connection</span>
+        <div style="text-align: right;">
+            <span class="badge pass">PASSED</span>
+            <div style="font-size: 0.9em;">Connected to server</div>
+        </div>
+      `;
+      resultsDiv.appendChild(clientCard);
+    }
+
+    function renderError(error) {
+       const btn = document.getElementById('runBtn');
+       const resultsDiv = document.getElementById('results');
+
+       btn.disabled = false;
+       btn.innerText = 'Re-run Checks';
+
+       resultsDiv.innerHTML = `
+         <div class="status-card fail">
+            <span class="label">System Error</span>
+            <span class="badge fail">FAILED</span>
+         </div>
+         <p style="color: #ad2122;">${error.message}</p>
+       `;
+    }
+
+    // Auto-run on load
+    window.onload = runDiagnostics;
+  </script>
+</body>
+</html>
