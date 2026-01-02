@@ -5,10 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OHS Academics & Attendance Dashboard</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Lexend', 'sans-serif'],
+                    },
+                    colors: {
+                        'ops-primary': '#2d3f89',
+                        'ops-blue-dark': '#1d2a5d',
+                        'ops-blue-light': '#4356a9',
+                        'ops-blue-lighter': '#eaecf5',
+                        'ops-red': '#ad2122',
+                        'ops-red-dark': '#7a1718',
+                        'ops-red-lighter': '#e5c7c7',
+                        'ops-gray': '#333333',
+                        'ops-gray-dark': '#1a1a1a',
+                        'ops-gray-light': '#f2f2f3',
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2d3f89; }
+        body { font-family: 'Lexend', sans-serif; background-color: #2d3f89; }
         .chart-container { position: relative; height: 300px; width: 100%; }
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
         .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
@@ -60,7 +83,7 @@
         </header>
 
         <div id="loading-state" class="text-center py-16 bg-white rounded-lg">
-            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <svg class="animate-spin h-8 w-8 text-ops-primary mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             <p class="mt-4 text-gray-600 font-medium">Loading and processing student data...</p>
         </div>
 
@@ -77,7 +100,7 @@
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-gray-700">Student Lookup Filters</h2>
-                        <button id="reset-student-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                    <button id="reset-student-filters-btn" class="text-sm font-medium text-ops-primary hover:text-ops-blue-dark transition">Clear Filters</button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input type="text" id="student-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg">
@@ -106,7 +129,7 @@
                                 </svg>
                                 Export Infographic
                             </button>
-                            <button id="reset-global-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                            <button id="reset-global-filters-btn" class="text-sm font-medium text-ops-primary hover:text-ops-blue-dark transition">Clear Filters</button>
                         </div>
                     </div>
                     <div id="global-filters" class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -220,7 +243,9 @@
                 <div class="card mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-gray-700">Historical Snapshot Management</h2>
-                        <button id="create-snapshot-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" aria-label="Create Snapshot Now">Create Snapshot Now</button>
+                        <button id="create-snapshot-btn" class="px-4 py-2 bg-ops-primary text-white rounded-lg hover:bg-ops-blue-dark transition flex items-center gap-2" aria-label="Create Snapshot Now">
+                            <span>Create Snapshot Now</span>
+                        </button>
                     </div>
                     <p class="text-sm text-gray-600 mb-4">Snapshots are automatically captured every Monday at 11:00 AM before the Tuesday data updates. View trends and compare data week-over-week.</p>
                     <!-- Inline notification message div -->
@@ -1409,17 +1434,26 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('create-snapshot-btn').addEventListener('click', () => {
                 const btn = document.getElementById('create-snapshot-btn');
+                const originalContent = btn.innerHTML;
+
                 btn.disabled = true;
                 btn.setAttribute('aria-busy', 'true');
                 btn.setAttribute('aria-disabled', 'true');
-                btn.textContent = 'Creating...';
+                // OPS Tech Loader Spinner in button
+                btn.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating...</span>
+                `;
 
                 google.script.run
                     .withSuccessHandler(() => {
                         btn.disabled = false;
                         btn.removeAttribute('aria-busy');
                         btn.removeAttribute('aria-disabled');
-                        btn.textContent = 'Create Snapshot Now';
+                        btn.innerHTML = originalContent;
                         historicalData = null;
                         loadHistoricalData();
                         showMessage('snapshot-message', 'Snapshot created successfully!', 'success');
@@ -1428,7 +1462,7 @@
                         btn.disabled = false;
                         btn.removeAttribute('aria-busy');
                         btn.removeAttribute('aria-disabled');
-                        btn.textContent = 'Create Snapshot Now';
+                        btn.innerHTML = originalContent;
                         showMessage('snapshot-message', 'Error creating snapshot: ' + formatErrorMessage(error), 'error');
                     })
                     .createWeeklySnapshot();
