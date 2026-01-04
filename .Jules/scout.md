@@ -1,0 +1,1 @@
+## 2026-01-04 - System Health Diagnostic Tool **Risk:** Silent failures in business logic or missing infrastructure (Sheets) can go unnoticed. **Prevention:** Implemented `Tests.gs` for server-side validation and `tests.html` for a branded visual status dashboard.
