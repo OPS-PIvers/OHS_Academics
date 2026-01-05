@@ -231,46 +231,64 @@ function compareSnapshots(date1, date2) {
     }
 
     // Use centralized config (exclude date column from comparison)
-    const metricsToCompare = SNAPSHOT_METRICS_CONFIG.filter(m => m.key !== 'snapshotDate');
-
-    const changes = metricsToCompare.map(metric => {
-      const value1 = snapshot1[metric.key] || 0;
-      const value2 = snapshot2[metric.key] || 0;
-      const delta = value2 - value1;
-
-      // Handle division by zero for percent change calculation
-      let percentChange;
-      if (value1 === 0 && value2 === 0) {
-        percentChange = 0; // No change: both are zero
-      } else if (value1 === 0 && value2 !== 0) {
-        percentChange = 'N/A (from zero)'; // Percent change from zero baseline is undefined/infinite
-      } else {
-        percentChange = ((delta / value1) * 100).toFixed(1);
-      }
-
-      return {
-        metric: metric.header,
-        oldValue: metric.precision && typeof value1 === 'number' ? value1.toFixed(metric.precision) : value1,
-        newValue: metric.precision && typeof value2 === 'number' ? value2.toFixed(metric.precision) : value2,
-        delta: metric.precision && typeof delta === 'number' ? delta.toFixed(metric.precision) : delta,
-        percentChange: percentChange
-      };
-    }).filter(change => parseFloat(change.delta) !== 0); // Only show metrics that changed
+    // Delegate calculation to pure function for testability
+    const result = calculateSnapshotDiff(snapshot1, snapshot2, SNAPSHOT_METRICS_CONFIG);
 
     return {
       date1: snapshot1.formattedDate,
       date2: snapshot2.formattedDate,
-      changes: changes,
-      allMetrics: metricsToCompare.map(metric => ({
-        metric: metric.header,
-        value1: metric.precision && typeof snapshot1[metric.key] === 'number' ? snapshot1[metric.key].toFixed(metric.precision) : snapshot1[metric.key],
-        value2: metric.precision && typeof snapshot2[metric.key] === 'number' ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
-      }))
+      changes: result.changes,
+      allMetrics: result.allMetrics
     };
   } catch (e) {
     Logger.log(`Error comparing snapshots: ${e.message}`);
     return { error: e.message };
   }
+}
+
+/**
+ * Pure function to calculate differences between two snapshots.
+ * Isolated from Google Apps Script services for easier testing.
+ * @param {Object} snapshot1 - The older snapshot object.
+ * @param {Object} snapshot2 - The newer snapshot object.
+ * @param {Array} metricsConfig - The configuration array for metrics.
+ * @returns {Object} Object containing changes and allMetrics.
+ */
+function calculateSnapshotDiff(snapshot1, snapshot2, metricsConfig) {
+  const metricsToCompare = metricsConfig.filter(m => m.key !== 'snapshotDate');
+
+  const changes = metricsToCompare.map(metric => {
+    const value1 = snapshot1[metric.key] || 0;
+    const value2 = snapshot2[metric.key] || 0;
+    const delta = value2 - value1;
+
+    // Handle division by zero for percent change calculation
+    let percentChange;
+    if (value1 === 0 && value2 === 0) {
+      percentChange = 0; // No change: both are zero
+    } else if (value1 === 0 && value2 !== 0) {
+      percentChange = 'N/A (from zero)'; // Percent change from zero baseline is undefined/infinite
+    } else {
+      percentChange = ((delta / value1) * 100).toFixed(1);
+    }
+
+    return {
+      metric: metric.header,
+      oldValue: metric.precision && typeof value1 === 'number' ? value1.toFixed(metric.precision) : value1,
+      newValue: metric.precision && typeof value2 === 'number' ? value2.toFixed(metric.precision) : value2,
+      delta: metric.precision && typeof delta === 'number' ? delta.toFixed(metric.precision) : delta,
+      percentChange: percentChange
+    };
+  }).filter(change => parseFloat(change.delta) !== 0); // Only show metrics that changed
+
+  return {
+    changes: changes,
+    allMetrics: metricsToCompare.map(metric => ({
+      metric: metric.header,
+      value1: metric.precision && typeof snapshot1[metric.key] === 'number' ? snapshot1[metric.key].toFixed(metric.precision) : snapshot1[metric.key],
+      value2: metric.precision && typeof snapshot2[metric.key] === 'number' ? snapshot2[metric.key].toFixed(metric.precision) : snapshot2[metric.key]
+    }))
+  };
 }
 
 /**
