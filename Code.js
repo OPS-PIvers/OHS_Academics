@@ -1724,6 +1724,7 @@ function sendIneligibilitySummary() {
   // Indices relative to B:
   // 0: Name
   // 4: Activity (Col F)
+  // 5: Unserved Detention (Col G)
   // 10: Class List (Col L)
   const hubData = hubSheet.getRange("B2:L" + hubSheet.getLastRow()).getValues();
 
@@ -1731,6 +1732,7 @@ function sendIneligibilitySummary() {
     const studentName = row[0];
     const activityString = row[4];
     const classList = row[10];
+    const detention = row[5] || '0';
 
     // Check if student has failing classes AND is in an activity
     if (studentName && activityString && classList && typeof classList.toString === 'function') {
@@ -1744,6 +1746,7 @@ function sendIneligibilitySummary() {
         const studentInfo = {
           student: studentName.trim(),
           activity: activityList,
+          detention: detention,
           classes: failingClasses.join('\n')
         };
 
@@ -1768,16 +1771,38 @@ function sendIneligibilitySummary() {
   ineligibleStudents.sort(sortFunction);
   atRiskStudents.sort(sortFunction);
 
+  // Helper function to escape HTML characters
+  const escapeHtml = (text) => {
+    if (text === null || text === undefined) return '';
+    return text.toString()
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
   // Helper function to create an HTML table for a list of students
   const createHtmlTable = (studentList) => {
     return studentList.map((item, index) => {
       const backgroundColor = index % 2 === 0 ? '#ffffff' : '#f9f9f9'; // Alternating colors
-      const formattedClasses = item.classes.replace(/\n/g, '<br>');
+      // Escape all fields to prevent HTML injection issues
+      const safeStudent = escapeHtml(item.student);
+      const safeActivity = escapeHtml(item.activity);
+      // formattedClasses uses <br> which we want to keep, so we escape the content first if we were splitting raw text
+      // But item.classes is "\n" joined. So we should escape first then replace \n with <br>
+      const safeClasses = escapeHtml(item.classes).replace(/\n/g, '<br>');
+
+      // Ensure detention is a number and convert to string safely, falling back to "0" if invalid
+      const detentionValue = Number(item.detention);
+      const detentionHours = isNaN(detentionValue) ? '0' : detentionValue.toString();
+
       return `
       <tr>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 30%;">${item.student}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 30%;">${item.activity}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 40%;">${formattedClasses}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">${safeStudent}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">${safeActivity}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 15%; text-align: center;">${detentionHours}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 35%;">${safeClasses}</td>
       </tr>
     `
     }).join('');
@@ -1797,9 +1822,10 @@ function sendIneligibilitySummary() {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #ddd; border-left: 5px solid #d9534f;">
           <thead>
             <tr style="background-color: #f2f2f2;">
-              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 30%;">Student Name</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 30%;">Activity</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 40%;">Classes with Failing Grade</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">Student Name</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">Activity</th>
+              <th style="padding: 10px 12px; text-align: center; font-size: 14px; font-family: Arial, sans-serif; width: 15%;">Unserved Detention Hours</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 35%;">Classes with Failing Grade</th>
             </tr>
           </thead>
           <tbody>
@@ -1821,9 +1847,10 @@ function sendIneligibilitySummary() {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #ddd; border-left: 5px solid #ffc107;">
           <thead>
             <tr style="background-color: #f2f2f2;">
-              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 30%;">Student Name</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 30%;">Activity</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 40%;">Classes with Failing Grade</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">Student Name</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">Activity</th>
+              <th style="padding: 10px 12px; text-align: center; font-size: 14px; font-family: Arial, sans-serif; width: 15%;">Unserved Detention Hours</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 14px; font-family: Arial, sans-serif; width: 35%;">Classes with Failing Grade</th>
             </tr>
           </thead>
           <tbody>
