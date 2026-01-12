@@ -1732,7 +1732,7 @@ function sendIneligibilitySummary() {
     const studentName = row[0];
     const activityString = row[4];
     const classList = row[10];
-    const detention = row[5];
+    const detention = row[5] || '0';
 
     // Check if student has failing classes AND is in an activity
     if (studentName && activityString && classList && typeof classList.toString === 'function') {
