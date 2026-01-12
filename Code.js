@@ -1793,8 +1793,9 @@ function sendIneligibilitySummary() {
       // But item.classes is "\n" joined. So we should escape first then replace \n with <br>
       const safeClasses = escapeHtml(item.classes).replace(/\n/g, '<br>');
 
-      // Ensure detention is a number and convert to string safely
-      const detentionHours = Number(item.detention || 0).toString();
+      // Ensure detention is a number and convert to string safely, falling back to "0" if invalid
+      const detentionValue = Number(item.detention);
+      const detentionHours = isNaN(detentionValue) ? '0' : detentionValue.toString();
 
       return `
       <tr>
