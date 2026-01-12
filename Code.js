@@ -1771,19 +1771,37 @@ function sendIneligibilitySummary() {
   ineligibleStudents.sort(sortFunction);
   atRiskStudents.sort(sortFunction);
 
+  // Helper function to escape HTML characters
+  const escapeHtml = (text) => {
+    if (text === null || text === undefined) return '';
+    return text.toString()
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
   // Helper function to create an HTML table for a list of students
   const createHtmlTable = (studentList) => {
     return studentList.map((item, index) => {
       const backgroundColor = index % 2 === 0 ? '#ffffff' : '#f9f9f9'; // Alternating colors
-      const formattedClasses = item.classes.replace(/\n/g, '<br>');
-      const detentionHours = (item.detention || 0).toString();
+      // Escape all fields to prevent HTML injection issues
+      const safeStudent = escapeHtml(item.student);
+      const safeActivity = escapeHtml(item.activity);
+      // formattedClasses uses <br> which we want to keep, so we escape the content first if we were splitting raw text
+      // But item.classes is "\n" joined. So we should escape first then replace \n with <br>
+      const safeClasses = escapeHtml(item.classes).replace(/\n/g, '<br>');
+
+      // Ensure detention is a number and convert to string safely
+      const detentionHours = Number(item.detention || 0).toString();
 
       return `
       <tr>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">${item.student}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">${item.activity}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">${safeStudent}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 25%;">${safeActivity}</td>
         <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 15%; text-align: center;">${detentionHours}</td>
-        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 35%;">${formattedClasses}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; background-color: ${backgroundColor}; font-size: 14px; font-family: Arial, sans-serif; width: 35%;">${safeClasses}</td>
       </tr>
     `
     }).join('');
