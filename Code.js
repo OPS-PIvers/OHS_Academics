@@ -341,15 +341,17 @@ function sendTier2InstructorEmails() {
         const nameParts = fullName.trim().split(' ');
         const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
 
-        // Identify if this is the Promise Fellow role
-        // Check if intervention string contains "Promise Fellow" (case insensitive)
-        const isPromiseFellow = intervention && intervention.toString().toLowerCase().includes("promise fellow");
+        // Identify if this is the Promise Fellow role or ADSIS role
+        const interventionStr = intervention ? intervention.toString().toLowerCase() : "";
+        const isPromiseFellow = interventionStr.includes("promise fellow");
+        const isADSIS = interventionStr.includes("adsis");
 
         return {
           fullName: fullName.trim(),
           lastName: lastName.trim().toLowerCase(),
           email: email.trim(),
           isPromiseFellow: isPromiseFellow,
+          isADSIS: isADSIS,
           students: [] // Initialize an empty array to hold students
         };
       }
@@ -512,7 +514,10 @@ function sendTier2InstructorEmails() {
     const studentCardsHtml = instructor.students.map(student => {
       const spartanData = spartanHourData.get(student.name.trim().toLowerCase()) || { requests: 0, skipped: 0, signups: 0 };
       const studentAbsenceData = absenceData.get(student.name.trim().toLowerCase()) || { p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0, sphr: 0 };
-      return createStudentCardHtml(student, spartanData, studentAbsenceData, instructor.isPromiseFellow);
+
+      // ADSIS instructors get all Tier 2 data PLUS unserved detention.
+      // Other Tier 2 instructors do not get unserved detention.
+      return createStudentCardHtml(student, spartanData, studentAbsenceData, instructor.isPromiseFellow, instructor.isADSIS);
     }).join('');
 
     const timestampForSubject = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy");
@@ -537,14 +542,14 @@ function sendTier2InstructorEmails() {
         subject: subject,
         htmlBody: htmlBody
       });
-      Logger.log(`Successfully sent summary email to ${instructor.name} at ${instructor.email}`);
+      Logger.log(`Successfully sent summary email to ${instructor.fullName} at ${instructor.email}`);
       sentRecipients.push({ 
         name: instructor.fullName, 
         email: instructor.email,
-        role: instructor.isPromiseFellow ? "Promise Fellow" : "Tier 2 Instructor"
+        role: instructor.isADSIS ? "ADSIS" : (instructor.isPromiseFellow ? "Promise Fellow" : "Tier 2 Instructor")
       });
     } catch (e) {
-      Logger.log(`Failed to send email to ${instructor.name}. Error: ${e.toString()}`);
+      Logger.log(`Failed to send email to ${instructor.fullName}. Error: ${e.toString()}`);
     }
   });
 
@@ -2182,9 +2187,10 @@ function sendCaseManagerSummaryEmails() {
  * @param {object} spartanData - The Spartan Hour data for the student.
  * @param {object} studentAbsenceData - The absence data for the student.
  * @param {boolean} isPromiseFellow - Whether the recipient is a Promise Fellow (restricts academic data).
+ * @param {boolean} includeDetention - Whether to include unserved detention hours (default: true).
  * @returns {string} The HTML string for the student card.
  */
-function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromiseFellow = false) {
+function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromiseFellow = false, includeDetention = true) {
   const isFailing = student.failing && student.failing.length > 0;
 
   const getAbsenceColor = (absences) => {
@@ -2209,9 +2215,14 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromi
     leftColumnContent = `
             <p style="margin: 0 0 8px;"><strong>Grade Level:</strong> ${student.grade}</p>
             <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
-            <p style="margin: 0 0 8px;"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
-            <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
+            <p style="margin: 0 0 ${includeDetention ? '8px' : '16px'};"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
     `;
+
+    if (includeDetention) {
+      leftColumnContent += `
+            <p style="margin: 0 0 16px;"><strong>Unserved Detention:</strong> <span style="background-color: ${student.detention > 0 ? '#fff3cd' : 'transparent'}; padding: 2px 5px; border-radius: 3px;">${student.detention} hours</span></p>
+      `;
+    }
 
     spartanHourColumn = `
           <td style="width: 50%; vertical-align: top; padding-left: 10px;">
