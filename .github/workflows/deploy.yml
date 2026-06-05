@@ -1,9 +1,10 @@
 name: Deploy to Google Apps Script
 
 # Pushes the project to Apps Script and redeploys the active deployment whenever
-# anything lands on main. Mirrors the .gemini/commands/deploy_webapp.toml command:
+# anything lands on main. Mirrors the .gemini/commands/deploy_webapp.toml command
+# (adapted to clasp v3, which replaced `clasp deploy -i <id>` with update-deployment):
 #   1. clasp push --force
-#   2. clasp deploy -i <deployment id>
+#   2. clasp update-deployment <deployment id>
 # The deployment ID is read from that command file so there is a single source of truth.
 
 on:
@@ -29,7 +30,7 @@ jobs:
           node-version: '22'
 
       - name: Install clasp
-        run: npm install -g @google/clasp@2.4.2
+        run: npm install -g @google/clasp@3.3
 
       - name: Run unit tests
         run: |
@@ -47,6 +48,7 @@ jobs:
             exit 1
           fi
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          echo "clasp_config_auth=$HOME/.clasprc.json" >> "$GITHUB_ENV"
 
       - name: Resolve active deployment ID
         id: deployment
@@ -63,4 +65,4 @@ jobs:
         run: clasp push --force
 
       - name: Redeploy active deployment
-        run: clasp deploy -i "${{ steps.deployment.outputs.id }}"
+        run: clasp update-deployment "${{ steps.deployment.outputs.id }}"
