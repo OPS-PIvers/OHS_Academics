@@ -1,0 +1,66 @@
+name: Deploy to Google Apps Script
+
+# Pushes the project to Apps Script and redeploys the active deployment whenever
+# anything lands on main. Mirrors the .gemini/commands/deploy_webapp.toml command:
+#   1. clasp push --force
+#   2. clasp deploy -i <deployment id>
+# The deployment ID is read from that command file so there is a single source of truth.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Never let two deploys run at once (they would clobber the same deployment).
+concurrency:
+  group: clasp-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install clasp
+        run: npm install -g @google/clasp@2.4.2
+
+      - name: Run unit tests
+        run: |
+          for f in tests/test_*.js; do
+            echo "--- $f ---"
+            node "$f" || exit 1
+          done
+
+      - name: Authenticate clasp
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::Missing CLASPRC_JSON secret. Run 'clasp login' locally and paste the contents of ~/.clasprc.json into a repo secret named CLASPRC_JSON."
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Resolve active deployment ID
+        id: deployment
+        run: |
+          DEPLOYMENT_ID="$(grep -oE 'AKfycb[A-Za-z0-9_-]+' .gemini/commands/deploy_webapp.toml | head -n1)"
+          if [ -z "$DEPLOYMENT_ID" ]; then
+            echo "::error::Could not find a deployment ID (AKfycb...) in .gemini/commands/deploy_webapp.toml"
+            exit 1
+          fi
+          echo "Using deployment ID: $DEPLOYMENT_ID"
+          echo "id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Push to Apps Script
+        run: clasp push --force
+
+      - name: Redeploy active deployment
+        run: clasp deploy -i "${{ steps.deployment.outputs.id }}"
