@@ -312,6 +312,7 @@ function getHistoricalDataForClient() {
  * This function is designed to be run by a time-based trigger.
  */
 function sendTier2InstructorEmails() {
+  if (!areAutomatedEmailsEnabled()) { Logger.log('sendTier2InstructorEmails: automated emails disabled; skipping.'); return; }
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const adminSheet = ss.getSheetByName("Admin Settings");
   const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
@@ -566,6 +567,7 @@ function sendTier2InstructorEmails() {
  * This function is designed to be run by a time-based trigger.
  */
 function sendCounselorSummaryEmails() {
+  if (!areAutomatedEmailsEnabled()) { Logger.log('sendCounselorSummaryEmails: automated emails disabled; skipping.'); return; }
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const adminSheet = ss.getSheetByName("Admin Settings");
   const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
@@ -896,6 +898,77 @@ function getUserRole() {
     Logger.log("Error in getUserRole: " + e.message);
     return null;
   }
+}
+
+/**
+ * Throws if the active user is not an ADMIN. Use to guard admin-only endpoints.
+ * The trailing underscore keeps it from being callable via google.script.run.
+ * @returns {Object} The authenticated admin's user info from getUserRole().
+ */
+function requireAdmin_() {
+  const user = getUserRole();
+  if (!user || user.role !== 'ADMIN') {
+    throw new Error('Unauthorized: Admin access required.');
+  }
+  return user;
+}
+
+// Name of the sheet that stores app-wide settings (e.g., the global email toggle).
+const APP_SETTINGS_SHEET = "App Settings";
+
+/**
+ * Returns the "App Settings" sheet, creating it (with emails defaulting to ON) if missing.
+ * @returns {Sheet} The App Settings sheet.
+ */
+function getOrCreateAppSettingsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(APP_SETTINGS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(APP_SETTINGS_SHEET);
+    sheet.getRange('A1').setValue('Automated Emails Enabled');
+    const toggleCell = sheet.getRange('B1');
+    toggleCell.insertCheckboxes();
+    toggleCell.setValue(true);
+  }
+  return sheet;
+}
+
+/**
+ * Reads the global "automated emails" toggle from App Settings cell B1.
+ * Fails OPEN: returns true if the sheet/cell is missing or unreadable, so a transient
+ * error never silently suppresses all automated mail. Only a deliberately stored
+ * false / "FALSE" / 0 / "no" / "off" disables sending.
+ * @returns {boolean} True if automated emails should be sent.
+ */
+function areAutomatedEmailsEnabled() {
+  try {
+    const sheet = getOrCreateAppSettingsSheet_();
+    const value = sheet.getRange('B1').getValue();
+    if (value === false) return false;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const v = value.trim().toLowerCase();
+      return !(v === 'false' || v === 'no' || v === 'off' || v === '0');
+    }
+    return true; // true, blank, or any other truthy value => enabled
+  } catch (e) {
+    Logger.log('areAutomatedEmailsEnabled: read failed, defaulting to ENABLED. ' + e.message);
+    return true;
+  }
+}
+
+/**
+ * Sets the global "automated emails" toggle. ADMIN only.
+ * @param {boolean} enabled Whether automated emails should be sent.
+ * @returns {{enabled: boolean}} The stored state.
+ */
+function setAutomatedEmailsEnabled(enabled) {
+  requireAdmin_();
+  const sheet = getOrCreateAppSettingsSheet_();
+  const toggleCell = sheet.getRange('B1');
+  toggleCell.insertCheckboxes();
+  toggleCell.setValue(enabled === true);
+  return { enabled: enabled === true };
 }
 
 /**
@@ -1527,6 +1600,7 @@ function getCurrentUserRole() {
  * Designed to be run by a time-based trigger.
  */
 function sendIneligibilityNotifications() {
+  if (!areAutomatedEmailsEnabled()) { Logger.log('sendIneligibilityNotifications: automated emails disabled; skipping.'); return; }
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("✎Activity Advisors & Coaches");
 
@@ -1714,6 +1788,7 @@ function getAdminEmails() {
  * Designed to be run by a time-based trigger.
  */
 function sendIneligibilitySummary() {
+  if (!areAutomatedEmailsEnabled()) { Logger.log('sendIneligibilitySummary: automated emails disabled; skipping.'); return; }
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
 
@@ -1940,6 +2015,7 @@ function sendIneligibilitySummary() {
  * summary email to their respective case managers, using a new matching logic.
  */
 function sendCaseManagerSummaryEmails() {
+  if (!areAutomatedEmailsEnabled()) { Logger.log('sendCaseManagerSummaryEmails: automated emails disabled; skipping.'); return; }
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hubSheet = ss.getSheetByName("⭐Academics & Attendance Hub");
   const adminSheet = ss.getSheetByName("Admin Settings");
@@ -2286,6 +2362,7 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromi
  * @param {Array<{name: string, email: string}>} recipients - List of recipients who received emails.
  */
 function sendAdminRecapEmail(processName, recipients) {
+  if (!areAutomatedEmailsEnabled()) { Logger.log('sendAdminRecapEmail: automated emails disabled; skipping.'); return; }
   const adminEmail = "erin.head@orono.k12.mn.us";
   const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy 'at' h:mm a");
   
