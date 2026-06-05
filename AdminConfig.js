@@ -61,6 +61,14 @@ function rowHasContent_(row) {
 }
 
 /**
+ * Coerces a sheet cell to a trimmed string. Returns '' for null/undefined so empty cells
+ * never surface as the literal strings "null"/"undefined" in the UI or written back to the sheet.
+ */
+function cellToString_(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+/**
  * Reads `width` columns starting at `startCol` from row 2 to the sheet's last row,
  * drops fully-empty rows, and maps each remaining row with `mapper`.
  */
@@ -109,8 +117,8 @@ function readAdmins_() {
   const sheet = getSheetOrNull_(ADMIN_SETTINGS_SHEET);
   if (!sheet) return [];
   return readColumns_(sheet, 1, 2, r => ({
-    name: String(r[0]).trim(),
-    email: String(r[1]).trim()
+    name: cellToString_(r[0]),
+    email: cellToString_(r[1])
   }));
 }
 
@@ -118,9 +126,9 @@ function readCaseManagers_() {
   const sheet = getSheetOrNull_(ADMIN_SETTINGS_SHEET);
   if (!sheet) return [];
   return readColumns_(sheet, 3, 3, r => ({
-    first: String(r[0]).trim(),
-    last: String(r[1]).trim(),
-    email: String(r[2]).trim()
+    first: cellToString_(r[0]),
+    last: cellToString_(r[1]),
+    email: cellToString_(r[2])
   }));
 }
 
@@ -128,10 +136,10 @@ function readCounselors_() {
   const sheet = getSheetOrNull_(ADMIN_SETTINGS_SHEET);
   if (!sheet) return [];
   return readColumns_(sheet, 6, 4, r => ({
-    name: String(r[0]).trim(),
-    email: String(r[1]).trim(),
-    alphaStart: String(r[2]).trim(),
-    alphaEnd: String(r[3]).trim()
+    name: cellToString_(r[0]),
+    email: cellToString_(r[1]),
+    alphaStart: cellToString_(r[2]),
+    alphaEnd: cellToString_(r[3])
   }));
 }
 
@@ -139,9 +147,9 @@ function readTier2_() {
   const sheet = getSheetOrNull_(ADMIN_SETTINGS_SHEET);
   if (!sheet) return [];
   return readColumns_(sheet, 10, 3, r => ({
-    name: String(r[0]).trim(),
-    intervention: String(r[1]).trim(),
-    email: String(r[2]).trim()
+    name: cellToString_(r[0]),
+    intervention: cellToString_(r[1]),
+    email: cellToString_(r[2])
   }));
 }
 
@@ -149,9 +157,9 @@ function readStaffRoles_() {
   const sheet = getSheetOrNull_(STAFF_ROLES_SHEET);
   if (!sheet) return [];
   return readColumns_(sheet, 1, 3, r => ({
-    name: String(r[0]).trim(),
-    email: String(r[1]).trim(),
-    role: String(r[2]).trim().toUpperCase()
+    name: cellToString_(r[0]),
+    email: cellToString_(r[1]),
+    role: cellToString_(r[2]).toUpperCase()
   }));
 }
 
@@ -163,18 +171,18 @@ function readActivityAdvisors_() {
   const values = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
   const out = [];
   values.forEach((r, idx) => {
-    const activity = String(r[0] == null ? '' : r[0]).trim();
+    const activity = cellToString_(r[0]);
     if (activity === '') return; // skip rows that are not real activities
     out.push({
       row: idx + 2, // actual sheet row number
       activity: activity,
-      students: r[1] == null ? '' : String(r[1]),
-      primaryName: String(r[2]).trim(),
-      primaryEmail: String(r[3]).trim(),
-      secondaryName: String(r[4]).trim(),
-      secondaryEmail: String(r[5]).trim(),
-      otherNames: String(r[6]).trim(),
-      otherEmails: String(r[7]).trim(),
+      students: r[1] == null ? '' : String(r[1]), // keep raw (preserve newlines), no trim
+      primaryName: cellToString_(r[2]),
+      primaryEmail: cellToString_(r[3]),
+      secondaryName: cellToString_(r[4]),
+      secondaryEmail: cellToString_(r[5]),
+      otherNames: cellToString_(r[6]),
+      otherEmails: cellToString_(r[7]),
       sendNotification: r[8] === true
     });
   });
