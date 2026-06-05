@@ -69,6 +69,12 @@ Tab name: Admin Settings
 10 : K : Tier 2 Intervention : Text
 11 : L : Tier 2 Instructors / Advisors Email : Text
 
+Tab name: App Settings
+[Holds app-wide settings. Auto-created (defaulting to enabled) if missing. Edited via the in-app Admin Config page.]
+ROW 1:
+0 : A : "Automated Emails Enabled" : Text (label)
+1 : B : [Global automated-email toggle] : Checkbox (TRUE = emails send, FALSE = all automated emails suppressed)
+
 Tab name: Absences (total)
 0 : A : Student Name (Last, First): Text
 1 : B : Grade : Number (11)
