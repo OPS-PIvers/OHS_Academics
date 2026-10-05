@@ -185,19 +185,19 @@ async function runTests() {
     activeSpreadsheet.addSheet("Admin Settings", adminData);
 
     // Setup Hub
-    // B: Student Name (1), C: Grade (2), G: Unserved Detention (6), L: Failing Classes (11), X: Tier 2 Instructor (23), AD: Consecutive Weeks (29)
-    // Range B2:AD... indices 0 to 28
+    // B: Student Name (1), C: Grade (2), G: Unserved Detention (6), L: Failing Classes (11), Y: Tier 2 Instructor (24), AE: Consecutive Weeks (30)
+    // Range B2:AE... indices 0 to 29
     // B is index 0 of range
     // C is index 1
     // G is index 5
     // L is index 10
-    // X is index 22
-    // AD is index 28
+    // Y is index 23
+    // AE is index 29
     const hubData = [
-        ["", "Name", "Grade", "ID", "CM", "Act", "Detention", "", "", "", "", "Failing", "", "", "", "", "", "", "", "", "", "", "", "Instructor", "", "", "", "", "", "Weeks"],
-        ["", "Student PF", 10, "", "", "", 5, "", "", "", "", "Math\nEnglish", "", "", "", "", "", "", "", "", "", "", "", "PF", "", "", "", "", "", 2],
-        ["", "Student ADSIS", 11, "", "", "", 10, "", "", "", "", "History", "", "", "", "", "", "", "", "", "", "", "", "ADSIS", "", "", "", "", "", 3],
-        ["", "Student Standard", 12, "", "Last1", "", 15, "", "", "", "", "Science", "", "", "", "", "", "", "", "", "", "", "", "Standard", "", "", "", "", "", 4]
+        ["", "Name", "Grade", "ID", "CM", "Act", "Detention", "", "", "", "", "Failing", "", "", "", "", "", "", "", "", "", "", "", "", "Instructor", "", "", "", "", "", "Weeks"],
+        ["", "Student PF", 10, "", "", "", 5, "", "", "", "", "Math\nEnglish", "", "", "", "", "", "", "", "", "", "", "", "", "PF", "", "", "", "", "", 2],
+        ["", "Student ADSIS", 11, "", "", "", 10, "", "", "", "", "History", "", "", "", "", "", "", "", "", "", "", "", "", "ADSIS", "", "", "", "", "", 3],
+        ["", "Student Standard", 12, "", "Last1", "", 15, "", "", "", "", "Science", "", "", "", "", "", "", "", "", "", "", "", "", "Standard", "", "", "", "", "", 4]
     ];
     activeSpreadsheet.addSheet("⭐Academics & Attendance Hub", hubData);
 

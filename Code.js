@@ -37,7 +37,8 @@ const SNAPSHOT_METRICS_CONFIG = [
   { key: 'studentsWithClubParticipation', header: 'Students with Club Participation', index: 19, type: 'number', aggregator: (data) => data.filter(s => s.totalClubMeetingsAttended > 0 || (s.clubsAttended?.trim() !== '')).length },
   { key: 'studentsInActivities', header: 'Students in Activities', index: 20, type: 'number', aggregator: (data) => data.filter(s => s.activity && s.activity.trim() !== '').length },
   { key: 'studentsWithTier2', header: 'Students with Tier 2', index: 21, type: 'number', aggregator: (data) => data.filter(s => s.tier2Interventions && s.tier2Interventions.trim() !== '').length },
-  { key: 'studentsWithSpecialEd', header: 'Students with Special Ed', index: 22, type: 'number', aggregator: (data) => data.filter(s => s.caseManager && s.caseManager.trim() !== '').length }
+  { key: 'studentsWithSpecialEd', header: 'Students with Special Ed', index: 22, type: 'number', aggregator: (data) => data.filter(s => s.caseManager && s.caseManager.trim() !== '').length },
+  { key: 'pfeAbsences', header: 'PFE Absences', index: 23, type: 'number', aggregator: (data) => data.reduce((sum, s) => sum + s.pfeAbsences, 0) }
 ];
 
 /**
@@ -59,6 +60,10 @@ function createWeeklySnapshot() {
       snapshotSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       snapshotSheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
       snapshotSheet.setFrozenRows(1);
+    } else if (snapshotSheet.getLastColumn() < SNAPSHOT_METRICS_CONFIG.length) {
+      // Add headers for metrics added after the sheet was created (older rows read as 0)
+      const headers = SNAPSHOT_METRICS_CONFIG.map(metric => metric.header);
+      snapshotSheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
     }
 
     // Get current student data to calculate aggregates
@@ -373,11 +378,11 @@ function sendTier2InstructorEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [AB], Consecutive Weeks [AD]
-      const studentRange = hubSheet.getRange("B2:AD" + hubLastRow).getValues();
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [Y], Consecutive Weeks [AE]
+      const studentRange = hubSheet.getRange("B2:AE" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
-        const tier2Instructor = row[22]; // Index 22 -> Col X
+        const tier2Instructor = row[23]; // Index 23 -> Col Y
 
         // Only include students who have an assigned Tier 2 instructor
         if (studentName && tier2Instructor) {
@@ -387,7 +392,7 @@ function sendTier2InstructorEmails() {
             detention: row[5] || '0',  // Index 5 -> Col G
             failing: row[10] || '',   // Index 10 -> Col L
             instructor: tier2Instructor.trim(),
-            consecutiveWeeks: row[28] || '0' // Index 28 -> Col AD
+            consecutiveWeeks: row[29] || '0' // Index 29 -> Col AE
           });
         }
       });
@@ -621,8 +626,8 @@ function sendCounselorSummaryEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Total Absences [S], Consecutive Weeks [AD]
-      const studentRange = hubSheet.getRange("B2:AD" + hubLastRow).getValues();
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Total Absences [T], Consecutive Weeks [AE]
+      const studentRange = hubSheet.getRange("B2:AE" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
         const failingClasses = row[10]; // Index 10 -> Col L
@@ -634,8 +639,8 @@ function sendCounselorSummaryEmails() {
             grade: row[1],             // Index 1 -> Col C
             detention: row[5] || '0',  // Index 5 -> Col G
             failing: failingClasses,   // This will have a value
-            absences: row[17] || '0',   // Index 17 -> Col S
-            consecutiveWeeks: row[28] || '0' // Index 28 -> Col AD
+            absences: row[18] || '0',   // Index 18 -> Col T
+            consecutiveWeeks: row[29] || '0' // Index 29 -> Col AE
           });
         }
       });
@@ -1205,18 +1210,18 @@ function _getAllStudentData() {
     return []; // No data if there are no students
   }
 
-  // Fetch data from column A (1) to AD (30) to include all necessary fields
-  const range = sheet.getRange(2, 1, lastRow - 1, 30);
+  // Fetch data from column A (1) to AG (33) to include all necessary fields
+  const range = sheet.getRange(2, 1, lastRow - 1, 33);
   const values = range.getValues();
 
   const headers = [
     "ineligible", "studentName", "grade", "id", "caseManager", "activity",
     "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
     "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
-    "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
+    "medicalAbsences", "illnessAbsences", "pfeAbsences", "truancyAbsences", "totalAbsences",
     "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
     "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
-    "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
+    "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks", "spartanHourAdvisor", "blendedCourses"
   ];
 
   const data = values.map(row => {
@@ -1226,7 +1231,7 @@ function _getAllStudentData() {
       // Perform necessary type conversions for charts and display
       if (['ineligible', 'isFailing'].includes(key)) {
         obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
-      } else if (['grade', 'id', 'unservedDetention', 'totalDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
+      } else if (['grade', 'id', 'unservedDetention', 'totalDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'pfeAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
         const parsedValue = parseInt(value, 10);
         obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
       } else {
@@ -1292,6 +1297,8 @@ function getStudentDataForWebApp() {
           caseManager: student.caseManager ? 'Yes' : '',
           tier2Instructor: student.tier2Instructor ? 'Yes' : '',
           failingClasses: '',
+          spartanHourAdvisor: '',
+          blendedCourses: '',
           tier2Interventions: student.tier2Interventions ? 'Yes' : '',
           mostRecentSpartanHourRequest: ''
         }));
@@ -1372,6 +1379,7 @@ function getAggregatedStats() {
       unexcused: allStudents.reduce((sum, s) => sum + (s.unexcusedAbsences || 0), 0),
       medical: allStudents.reduce((sum, s) => sum + (s.medicalAbsences || 0), 0),
       illness: allStudents.reduce((sum, s) => sum + (s.illnessAbsences || 0), 0),
+      pfe: allStudents.reduce((sum, s) => sum + (s.pfeAbsences || 0), 0),
       truancy: allStudents.reduce((sum, s) => sum + (s.truancyAbsences || 0), 0)
     };
 
@@ -1514,18 +1522,18 @@ function getAnonymizedStudentData() {
       return [];
     }
 
-    // Fetch data from columns A-AD
-    const range = sheet.getRange(2, 1, lastRow - 1, 30);
+    // Fetch data from columns A-AG
+    const range = sheet.getRange(2, 1, lastRow - 1, 33);
     const values = range.getValues();
 
     const headers = [
       "ineligible", "studentName", "grade", "id", "caseManager", "activity",
       "unservedDetention", "totalDetention", "disciplineDetention", "attendanceDetention",
       "isFailing", "failingClasses", "numFGrades", "unexcusedAbsences", "unexcusedTardies",
-      "medicalAbsences", "illnessAbsences", "truancyAbsences", "totalAbsences",
+      "medicalAbsences", "illnessAbsences", "pfeAbsences", "truancyAbsences", "totalAbsences",
       "totalAbsenceDays", "attendanceLetters", "dishonestyReferrals", "tier2Interventions",
       "tier2Instructor", "spartanHourTotalRequests", "spartanHourSkippedRequests", "spartanHourReqsHighPriority",
-      "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks"
+      "totalClubMeetingsAttended", "clubsAttended", "consecutiveWeeks", "spartanHourAdvisor", "blendedCourses"
     ];
 
     // Get "D/F No Request" List
@@ -1555,9 +1563,12 @@ function getAnonymizedStudentData() {
           obj[key] = value ? 'Yes' : '';
         } else if (key === 'tier2Instructor') {
           obj[key] = value ? 'Yes' : '';
+        } else if (['spartanHourAdvisor', 'blendedCourses'].includes(key)) {
+          // Course lists and advisor names can help re-identify students
+          obj[key] = '';
         } else if (['ineligible', 'isFailing'].includes(key)) {
           obj[key] = (value === true || String(value).toUpperCase() === 'TRUE');
-        } else if (['grade', 'unservedDetention', 'totalDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
+        } else if (['grade', 'unservedDetention', 'totalDetention', 'numFGrades', 'totalAbsences', 'disciplineDetention', 'attendanceDetention', 'unexcusedAbsences', 'unexcusedTardies', 'medicalAbsences', 'illnessAbsences', 'pfeAbsences', 'truancyAbsences', 'spartanHourTotalRequests', 'spartanHourSkippedRequests', 'spartanHourReqsHighPriority', 'totalClubMeetingsAttended', 'consecutiveWeeks'].includes(key)) {
           const parsedValue = parseInt(value, 10);
           obj[key] = isNaN(parsedValue) ? 0 : parsedValue;
         } else {
@@ -2072,8 +2083,8 @@ function sendCaseManagerSummaryEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Case Manager [E], Consecutive Weeks [AD]
-      const studentRange = hubSheet.getRange("B2:AD" + hubLastRow).getValues();
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Case Manager [E], Consecutive Weeks [AE]
+      const studentRange = hubSheet.getRange("B2:AE" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
         const caseManagerFromHub = row[3]; // Index 3 -> Col E
@@ -2086,7 +2097,7 @@ function sendCaseManagerSummaryEmails() {
             detention: row[5] || '0',  // Index 5 -> Col G
             failing: row[10] || '',   // Index 10 -> Col L
             caseManager: caseManagerFromHub.toString().trim(),
-            consecutiveWeeks: row[28] || '0' // Index 28 -> Col AD
+            consecutiveWeeks: row[29] || '0' // Index 29 -> Col AE
           });
         }
       });
