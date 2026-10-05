@@ -1350,18 +1350,23 @@
             renderStudentList(data);
         }
 
+        // Escape JSON for a single-quoted HTML attribute so values with apostrophes (e.g. "Women's Studies") don't break the markup
+        function toDataAttr(obj) {
+            return JSON.stringify(obj).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
         function renderStudentList(data) {
             const listBody = document.getElementById('student-list'), noResults = document.getElementById('no-students-message');
             if (data.length === 0) { listBody.innerHTML = ''; noResults.classList.remove('hidden'); return; }
             noResults.classList.add('hidden');
             listBody.innerHTML = data.map(s => `<tr class="${s.ineligible ? 'bg-red-50' : 'bg-white'}">
                 <td class="px-6 py-4 text-sm text-gray-500 text-center">${s.grade}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div>${s.caseManager ? `<div class="text-xs font-semibold text-blue-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="caseManager">Sp.Ed.</div>` : ''}${s.tier2Interventions || s.tier2Instructor ? `<div class="text-xs font-semibold text-purple-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="tier2">Tier 2</div>` : ''}${s.blendedCourses ? `<div class="text-xs font-semibold text-teal-600 cursor-pointer tooltip-trigger mt-1" data-student='${JSON.stringify(s)}' data-type="blended">Blended</div>` : ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${s.studentName}</div><div class="text-sm text-gray-500">ID: ${s.id}</div>${s.caseManager ? `<div class="text-xs font-semibold text-blue-600 cursor-pointer tooltip-trigger mt-1" data-student='${toDataAttr(s)}' data-type="caseManager">Sp.Ed.</div>` : ''}${s.tier2Interventions || s.tier2Instructor ? `<div class="text-xs font-semibold text-purple-600 cursor-pointer tooltip-trigger mt-1" data-student='${toDataAttr(s)}' data-type="tier2">Tier 2</div>` : ''}${s.blendedCourses ? `<div class="text-xs font-semibold text-teal-600 cursor-pointer tooltip-trigger mt-1" data-student='${toDataAttr(s)}' data-type="blended">Blended</div>` : ''}</td>
                 <td class="px-6 py-4 text-xs text-gray-500">${s.activity || ''}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.numFGrades > 0 ? 'border-2 border-red-700' : ''}" data-student='${JSON.stringify(s)}' data-type="failing">${s.numFGrades}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.unservedDetention > 0 ? 'border-2 border-red-700' : ''}" data-student='${JSON.stringify(s)}' data-type="detention">${s.unservedDetention} hrs</td>
-                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="absences">${s.totalAbsences}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${JSON.stringify(s)}' data-type="spartanHour">${s.spartanHourTotalRequests} request${s.spartanHourTotalRequests === 1 ? '' : 's'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.numFGrades > 0 ? 'border-2 border-red-700' : ''}" data-student='${toDataAttr(s)}' data-type="failing">${s.numFGrades}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger ${s.unservedDetention > 0 ? 'border-2 border-red-700' : ''}" data-student='${toDataAttr(s)}' data-type="detention">${s.unservedDetention} hrs</td>
+                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${toDataAttr(s)}' data-type="absences">${s.totalAbsences}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 text-center tooltip-trigger" data-student='${toDataAttr(s)}' data-type="spartanHour">${s.spartanHourTotalRequests} request${s.spartanHourTotalRequests === 1 ? '' : 's'}</td>
             </tr>`).join('');
         }
         
