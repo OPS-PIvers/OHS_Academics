@@ -20,20 +20,22 @@ Tab name: ⭐Academics & Attendance Hub
 14 : O : Unexcused Tardies (Total) : Number (1)
 15 : P : Medical Absences (Total) : Number (1)
 16 : Q : ILLNESS Absences (Total) : Number (1)
-17 : R : Truancy Absences (Total) : Number (1)
-18 : S : Total Absences (Class Periods) : Number (1.0) 
-19 : T : Total Absences (Days) : Number (1.0)
-20 : U : Attendance Letters : Text ["L# (MM/DD), L# (MM/DD)"]
-21 : V : Referrals (Total - Academic Dishonesty) : Number (1) 
-22 : W : Tier 2 Interventions (Current) : Text
-23 : X : Tier 2 Instructor  / Advisor : Text (Teacher Last Name)
-24 : Y : Spartan Hour Total Requests : Number (1)
-25 : Z : Spartan Hour Skipped Requests : Number (1) 
-26 : AA : Spartan Hour Reqs High Priority : Number (1) 
-27 : AB : Total Club Meetings Attended : Number (1) : 
-28 : AC : Clubs Attended : Text
-29 : AD : Consecutive Weeks on D/F List : Number (1)
-30 : AE : Spartan Hour Advisor : Text
+17 : R : PFE Absences (Total) : Number (1)
+18 : S : Truancy Absences (Total) : Number (1)
+19 : T : Total Absences (Class Periods) : Number (1.0) 
+20 : U : Total Absences (Days) : Number (1.0)
+21 : V : Attendance Letters : Text ["L# (MM/DD), L# (MM/DD)"]
+22 : W : Referrals (Total - Academic Dishonesty) : Number (1) 
+23 : X : Tier 2 Interventions (Current) : Text
+24 : Y : Tier 2 Instructor  / Advisor : Text (Teacher Last Name)
+25 : Z : Spartan Hour Total Requests : Number (1)
+26 : AA : Spartan Hour Skipped Requests : Number (1) 
+27 : AB : Spartan Hour Reqs High Priority : Number (1) 
+28 : AC : Total Club Meetings Attended : Number (1) : 
+29 : AD : Clubs Attended : Text
+30 : AE : Consecutive Weeks on D/F List : Number (1)
+31 : AF : Spartan Hour Advisor : Text
+32 : AG : Blended Courses : Text
 
 Tab name: Spartan Hour Intervention
 0 : A : Student last : Text
@@ -124,6 +126,7 @@ Tab name: Historical Data
 20 : U : Students in Activities : Integer
 21 : V : Students with Tier 2 : Integer
 22 : W : Students with Special Ed : Integer
+23 : X : PFE Absences : Integer
 
 Tab name: Staff Roles
 0 : A : Name : Text [First Last]
