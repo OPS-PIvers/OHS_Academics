@@ -12,8 +12,9 @@
  *  - The "Attendance Threshold Log" sheet remembers how many times each student has already been
  *    reported for each level, so the weekly email can highlight NEW crossings. If a student's count
  *    drops (new school year, corrected codes) the log is lowered automatically.
- *  - Each recipient gets ONE email per run: "Newly reached" tables on top, then "Currently at each
- *    level" tables. A student only appears under their HIGHEST level per category.
+ *  - Each recipient gets ONE email per run: an "at a glance" summary, then one table per level listing
+ *    everyone currently at it, with newly reached students badged NEW and listed first.
+ *    A student only appears under their HIGHEST level per category.
  *  - Recipients per level = the level's listed emails + (optionally) the student's counselor,
  *    resolved from the Admin Settings alpha ranges.
  *
@@ -37,10 +38,11 @@ const ATTENDANCE_EMAIL_TRIGGER_DAY = 'TUESDAY'; // a ScriptApp.WeekDay name
 const ATTENDANCE_EMAIL_TRIGGER_HOUR = 7;        // 0-23, script time zone (America/Chicago)
 
 // Category -> hub fields (keys produced by _getAllStudentData) that are summed.
+// fieldLabels (parallel to fields) are the email column headings for that category.
 const ATTENDANCE_CATEGORIES = {
-  TARDY:   { label: 'Tardy',                       fields: ['unexcusedTardies'] },                     // O
-  TRUANT:  { label: 'Truant / Unresolved Absence', fields: ['unexcusedAbsences', 'truancyAbsences'] }, // N + S
-  ILLNESS: { label: 'Illness / Medical',           fields: ['medicalAbsences', 'illnessAbsences'] }    // P + Q
+  TARDY:   { label: 'Tardy',                       fields: ['unexcusedTardies'],                      fieldLabels: ['Tardies'] },              // O
+  TRUANT:  { label: 'Truant / Unresolved Absence', fields: ['unexcusedAbsences', 'truancyAbsences'], fieldLabels: ['Unexcused', 'Truancy'] }, // N + S
+  ILLNESS: { label: 'Illness / Medical',           fields: ['medicalAbsences', 'illnessAbsences'],   fieldLabels: ['Medical', 'Illness'] }    // P + Q
 };
 
 // Row colors mirror the response chart (blank / yellow / orange / pink).
@@ -49,7 +51,14 @@ const ATTENDANCE_LEGAL_STATUS_COLORS = {
   'Habitual Truant': '#f9cb9c',
   'Withdrawn': '#f4cccc'
 };
-const ATTENDANCE_DEFAULT_LEVEL_COLOR = '#f2f2f2';
+const ATTENDANCE_DEFAULT_LEVEL_COLOR = '#f2f4f7';
+// Darker accent of the same hue, used for the level's left border and status pill.
+const ATTENDANCE_LEGAL_STATUS_ACCENTS = {
+  'Continuing Truant': '#c99a06',
+  'Habitual Truant': '#d9682b',
+  'Withdrawn': '#c0392b'
+};
+const ATTENDANCE_DEFAULT_LEVEL_ACCENT = '#8a94a6';
 
 // "Attendance Thresholds" sheet columns (A..J), header row 1.
 const ATTENDANCE_THRESHOLD_HEADERS = [
@@ -353,8 +362,10 @@ function buildAttendanceRecipientBuckets_(entries, sortedCounselors) {
 }
 
 // ===============================================================
-// Email HTML
+// Email HTML (tables + inline styles only, for email-client compatibility)
 // ===============================================================
+
+const ATTENDANCE_EMAIL_FONT = 'font-family: Arial, Helvetica, sans-serif;';
 
 function escapeAttendanceHtml_(value) {
   return cellToString_(value)
@@ -366,100 +377,157 @@ function formatAttendanceDays_(periods) {
   return (Math.round((periods / PERIODS_PER_DAY) * 10) / 10).toString();
 }
 
+function attendancePill_(text, background, color) {
+  return `<span style="display: inline-block; padding: 2px 7px; border-radius: 9px; background-color: ${background}; color: ${color}; font-size: 10px; font-weight: bold; letter-spacing: 0.4px; vertical-align: middle; ${ATTENDANCE_EMAIL_FONT}">${text}</span>`;
+}
+
 /**
- * Renders tables grouped by level (in sheet order).
- * @param {Object[]} entries
- * @param {boolean} useNewLevel Group by entry.newLevel (new section) instead of entry.level.
+ * Merges a recipient's "new" and "current" entries into one group per level (sheet order).
+ * Within a level, new students come first, then most periods first.
+ * @returns {Array<{level: Object, rows: Array<{entry: Object, isNew: boolean}>, newCount: number}>}
  */
-function buildAttendanceLevelTablesHtml_(entries, useNewLevel, levels) {
-  const cell = 'padding: 6px 8px; border-bottom: 1px solid #ddd; font-size: 12px; font-family: Arial, sans-serif;';
-  const th = 'padding: 8px; font-size: 10px; text-transform: uppercase; color: #555;';
-  let html = '';
+function groupAttendanceBucketByLevel_(bucket, levels) {
+  return levels.map(level => {
+    const rows = [];
+    const seen = new Set();
+    bucket.newEntries.filter(e => e.newLevel === level).forEach(e => { seen.add(e); rows.push({ entry: e, isNew: true }); });
+    bucket.currentEntries.filter(e => e.level === level && !seen.has(e)).forEach(e => rows.push({ entry: e, isNew: false }));
+    rows.sort((a, b) => (b.isNew - a.isNew) || (b.entry.periods - a.entry.periods) ||
+      cellToString_(a.entry.student.studentName).localeCompare(cellToString_(b.entry.student.studentName)));
+    return { level: level, rows: rows, newCount: rows.filter(r => r.isNew).length };
+  }).filter(g => g.rows.length > 0);
+}
 
-  levels.forEach(level => {
-    const group = entries
-      .filter(e => (useNewLevel ? e.newLevel : e.level) === level)
-      .sort((a, b) => cellToString_(a.student.studentName).localeCompare(cellToString_(b.student.studentName)));
-    if (group.length === 0) return;
+/** "At a glance" table: one row per level with new / total counts. */
+function buildAttendanceSummaryHtml_(groups) {
+  const cell = `padding: 8px 12px; border-bottom: 1px solid #e6e9ef; font-size: 13px; color: #1f2937; ${ATTENDANCE_EMAIL_FONT}`;
+  const th = `padding: 8px 12px; font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e6e9ef; ${ATTENDANCE_EMAIL_FONT}`;
+  const rows = groups.map(g => {
+    const accent = ATTENDANCE_LEGAL_STATUS_ACCENTS[g.level.legalStatus] || ATTENDANCE_DEFAULT_LEVEL_ACCENT;
+    return `
+      <tr>
+        <td style="${cell} border-left: 4px solid ${accent};"><strong>${escapeAttendanceHtml_(g.level.name)}</strong>${g.level.legalStatus ? `<br><span style="font-size: 11px; color: #6b7280;">${escapeAttendanceHtml_(g.level.legalStatus)}</span>` : ''}</td>
+        <td style="${cell}">${escapeAttendanceHtml_(g.level.response)}</td>
+        <td style="${cell} text-align: center; font-weight: bold; color: ${g.newCount ? '#2d3f89' : '#9ca3af'};">${g.newCount}</td>
+        <td style="${cell} text-align: center;">${g.rows.length}</td>
+      </tr>`;
+  }).join('');
+  return `
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #e6e9ef; border-radius: 6px;">
+      <tr style="background-color: #f7f8fa;">
+        <th style="${th} text-align: left;">Level</th>
+        <th style="${th} text-align: left;">Response</th>
+        <th style="${th} text-align: center;">New</th>
+        <th style="${th} text-align: center;">Total</th>
+      </tr>
+      ${rows}
+    </table>`;
+}
 
-    const color = ATTENDANCE_LEGAL_STATUS_COLORS[level.legalStatus] || ATTENDANCE_DEFAULT_LEVEL_COLOR;
-    const status = level.legalStatus ? escapeAttendanceHtml_(level.legalStatus) + ' &middot; ' : '';
-    const rows = group.map(e => {
-      const s = e.student;
-      const notes = [];
-      if (level.repeatEvery) {
-        notes.push('Reached ' + e.steps + '&times;' + (useNewLevel && e.newSteps ? ' (' + e.newSteps + ' new)' : ''));
-      }
-      if (useNewLevel && e.alsoCrossed.length) notes.push('Also crossed: ' + e.alsoCrossed.map(escapeAttendanceHtml_).join(', '));
-      return `
-        <tr>
-          <td style="${cell} white-space: nowrap;">${escapeAttendanceHtml_(s.studentName)}</td>
-          <td style="${cell} text-align: center;">${escapeAttendanceHtml_(s.grade)}</td>
-          <td style="${cell} text-align: center;">${escapeAttendanceHtml_(s.id)}</td>
-          <td style="${cell} text-align: center;">${Number(s.unexcusedAbsences) || 0}</td>
-          <td style="${cell} text-align: center;">${Number(s.truancyAbsences) || 0}</td>
-          <td style="${cell} text-align: center;">${Number(s.unexcusedTardies) || 0}</td>
-          <td style="${cell} text-align: center;">${Number(s.medicalAbsences) || 0}</td>
-          <td style="${cell} text-align: center;">${Number(s.illnessAbsences) || 0}</td>
-          <td style="${cell} text-align: center; font-weight: bold;">${e.periods} (${formatAttendanceDays_(e.periods)} d)</td>
-          <td style="${cell}">${escapeAttendanceHtml_(s.attendanceLetters)}</td>
-          <td style="${cell}">${notes.join('<br>')}</td>
-        </tr>`;
-    }).join('');
+/** One level: colored header block + student table showing only the columns that matter for it. */
+function buildAttendanceLevelSectionHtml_(group) {
+  const level = group.level;
+  const category = ATTENDANCE_CATEGORIES[level.category];
+  const tint = ATTENDANCE_LEGAL_STATUS_COLORS[level.legalStatus] || ATTENDANCE_DEFAULT_LEVEL_COLOR;
+  const accent = ATTENDANCE_LEGAL_STATUS_ACCENTS[level.legalStatus] || ATTENDANCE_DEFAULT_LEVEL_ACCENT;
 
-    html += `
-      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #ddd; margin-bottom: 18px;">
-        <tr><td colspan="11" style="padding: 10px 12px; background-color: ${color}; font-family: Arial, sans-serif; font-size: 13px; color: #222;">
-          <strong>${status}${escapeAttendanceHtml_(level.name)}</strong>
-          &nbsp;&mdash;&nbsp;${escapeAttendanceHtml_(level.categoryLabel)}, ${level.threshold} period${level.threshold === 1 ? '' : 's'}${level.repeatEvery ? ' (repeats every ' + level.repeatEvery + ')' : ''}
-          <br><span style="font-size: 12px;">Response: <strong>${escapeAttendanceHtml_(level.response)}</strong> &middot; ${group.length} student${group.length === 1 ? '' : 's'}</span>
-        </td></tr>
-        <tr style="background-color: #fafafa;">
-          <th style="${th} text-align: left;">Student</th>
-          <th style="${th}">Grade</th>
-          <th style="${th}">ID</th>
-          <th style="${th}">Unexcused</th>
-          <th style="${th}">Truancy</th>
-          <th style="${th}">Tardies</th>
-          <th style="${th}">Medical</th>
-          <th style="${th}">Illness</th>
-          <th style="${th}">Counted Periods</th>
-          <th style="${th} text-align: left;">Letters Sent</th>
-          <th style="${th} text-align: left;">Notes</th>
-        </tr>
-        ${rows}
-      </table>`;
-  });
-  return html;
+  const notesFor = r => {
+    const notes = [];
+    if (level.repeatEvery) notes.push('Reached ' + r.entry.steps + '&times;' + (r.isNew && r.entry.newSteps ? ' (+' + r.entry.newSteps + ')' : ''));
+    if (r.isNew && r.entry.alsoCrossed.length) notes.push('Also crossed: ' + r.entry.alsoCrossed.map(escapeAttendanceHtml_).join(', '));
+    return notes;
+  };
+  const showLetters = group.rows.some(r => cellToString_(r.entry.student.attendanceLetters));
+  const showNotes = group.rows.some(r => notesFor(r).length);
+
+  const th = `padding: 8px 10px; font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e6e9ef; ${ATTENDANCE_EMAIL_FONT}`;
+  const td = `padding: 8px 10px; border-bottom: 1px solid #eef0f4; font-size: 13px; color: #1f2937; ${ATTENDANCE_EMAIL_FONT}`;
+  const num = value => {
+    const n = Number(value) || 0;
+    return `<td style="${td} text-align: center;${n ? '' : ' color: #c0c6d0;'}">${n}</td>`;
+  };
+
+  const headerCells = [
+    `<th style="${th} text-align: left;">Student</th>`,
+    `<th style="${th} text-align: center;">Grade</th>`,
+    `<th style="${th} text-align: center;">ID</th>`
+  ].concat(category.fieldLabels.map(label => `<th style="${th} text-align: center;">${escapeAttendanceHtml_(label)}</th>`))
+   .concat([`<th style="${th} text-align: center;">Periods</th>`, `<th style="${th} text-align: center;">Days</th>`])
+   .concat(showLetters ? [`<th style="${th} text-align: left;">Letters Sent</th>`] : [])
+   .concat(showNotes ? [`<th style="${th} text-align: left;">Notes</th>`] : []);
+
+  const bodyRows = group.rows.map((r, i) => {
+    const s = r.entry.student;
+    const newPill = r.isNew ? ' &nbsp;' + attendancePill_('NEW', '#2d3f89', '#ffffff') : '';
+    return `
+      <tr style="background-color: ${i % 2 ? '#fafbfc' : '#ffffff'};">
+        <td style="${td} white-space: nowrap;"><strong>${escapeAttendanceHtml_(s.studentName)}</strong>${newPill}</td>
+        <td style="${td} text-align: center;">${escapeAttendanceHtml_(s.grade)}</td>
+        <td style="${td} text-align: center; color: #6b7280;">${escapeAttendanceHtml_(s.id)}</td>
+        ${category.fields.map(f => num(s[f])).join('')}
+        <td style="${td} text-align: center; font-weight: bold;">${r.entry.periods}</td>
+        <td style="${td} text-align: center; font-weight: bold;">${formatAttendanceDays_(r.entry.periods)}</td>
+        ${showLetters ? `<td style="${td} font-size: 12px; color: #4b5563;">${escapeAttendanceHtml_(s.attendanceLetters)}</td>` : ''}
+        ${showNotes ? `<td style="${td} font-size: 12px; color: #4b5563;">${notesFor(r).join('<br>')}</td>` : ''}
+      </tr>`;
+  }).join('');
+
+  const statusPill = level.legalStatus ? attendancePill_(escapeAttendanceHtml_(level.legalStatus).toUpperCase(), accent, '#ffffff') + '&nbsp; ' : '';
+  const trigger = `${escapeAttendanceHtml_(category.label)} &middot; ${level.threshold} period${level.threshold === 1 ? '' : 's'}` +
+    (level.threshold >= PERIODS_PER_DAY ? ` (${formatAttendanceDays_(level.threshold)} days)` : '') +
+    (level.repeatEvery ? ` &middot; repeats every ${level.repeatEvery}` : '');
+
+  return `
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin: 0 0 22px 0; border: 1px solid #e6e9ef;">
+      <tr><td colspan="${headerCells.length}" style="padding: 14px 16px; background-color: ${tint}; border-left: 5px solid ${accent}; ${ATTENDANCE_EMAIL_FONT}">
+        <div style="font-size: 16px; font-weight: bold; color: #111827;">${statusPill}${escapeAttendanceHtml_(level.name)}</div>
+        <div style="font-size: 13px; color: #1f2937; margin-top: 4px;">Response: <strong>${escapeAttendanceHtml_(level.response)}</strong></div>
+        <div style="font-size: 12px; color: #4b5563; margin-top: 4px;">${trigger} &middot; ${group.rows.length} student${group.rows.length === 1 ? '' : 's'}${group.newCount ? ` &middot; <strong style="color: #2d3f89;">${group.newCount} new</strong>` : ''}</div>
+      </td></tr>
+      <tr style="background-color: #f7f8fa;">${headerCells.join('')}</tr>
+      ${bodyRows}
+    </table>`;
 }
 
 function buildAttendanceEmailHtml_(bucket, levels, previewNote) {
-  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy 'at' h:mm a");
-  const sectionTitle = 'margin: 24px 0 10px 0; font-size: 16px; color: #4356a0; font-family: Arial, sans-serif;';
-  const newHtml = bucket.newEntries.length
-    ? buildAttendanceLevelTablesHtml_(bucket.newEntries, true, levels)
-    : '<p style="font-size: 13px; color: #666;">No students reached a new level since the last report.</p>';
-  const currentHtml = buildAttendanceLevelTablesHtml_(bucket.currentEntries, false, levels);
+  const date = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "EEEE, MMMM d, yyyy");
+  const groups = groupAttendanceBucketByLevel_(bucket, levels);
+  const totalNew = groups.reduce((sum, g) => sum + g.newCount, 0);
   const preview = previewNote
-    ? `<tr><td style="padding: 12px 30px; background-color: #fff3cd; font-size: 13px; font-family: Arial, sans-serif;">${previewNote}</td></tr>`
+    ? `<tr><td style="padding: 12px 32px; background-color: #fff3cd; color: #5c4400; font-size: 13px; ${ATTENDANCE_EMAIL_FONT}">${previewNote}</td></tr>`
     : '';
+  const newLine = totalNew
+    ? `<strong style="color: #2d3f89;">${totalNew} new</strong> since the last report (marked ${attendancePill_('NEW', '#2d3f89', '#ffffff')}, listed first in each level).`
+    : 'No students reached a new level since the last report.';
 
   return `
-    <!DOCTYPE html><html><body style="margin: 0; padding: 0; background-color: #f0f0f0; font-family: Arial, sans-serif;">
-      <table align="center" border="0" cellpadding="0" cellspacing="0" width="1000" style="border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <tr><td align="center" style="padding: 40px 0 30px 0; background-color: #4356a0; color: #ffffff;"><h1 style="font-size: 24px; margin: 0;">Weekly Attendance Threshold Report</h1></td></tr>
-        ${preview}
-        <tr><td style="padding: 20px 30px 40px 30px; color: #153643; font-size: 14px;">
-          <p style="margin: 0;">Hello,</p>
-          <p style="margin: 15px 0 0 0;">As of <strong>${timestamp}</strong>, these students have reached attendance thresholds that call for a response from you. Counts are in class periods (${PERIODS_PER_DAY} periods = 1 day). Each student is listed under their highest level per category.</p>
-          <h2 style="${sectionTitle}">Newly reached since the last report (${bucket.newEntries.length})</h2>
-          ${newHtml}
-          <h2 style="${sectionTitle}">All students currently at each level (${bucket.currentEntries.length})</h2>
-          ${currentHtml}
-          <p style="margin-top: 20px; font-size: 12px; color: #888;">This is an automated notification. Please do not reply directly to this email.</p>
-        </td></tr>
-        <tr><td style="padding: 20px 30px; background-color: #ecf0f1; text-align: center; font-size: 12px; color: #7f8c8d;">This is an automated notification from the OHS Academics &amp; Attendance Hub. Thresholds and recipients are managed in Admin Config &rarr; Attendance Thresholds.</td></tr>
-      </table>
+    <!DOCTYPE html><html><body style="margin: 0; padding: 0; background-color: #eef1f6; ${ATTENDANCE_EMAIL_FONT}">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #eef1f6;"><tr><td align="center" style="padding: 24px 12px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 860px; border-collapse: collapse; background-color: #ffffff;">
+          <tr><td style="padding: 28px 32px; background-color: #2d3f89; color: #ffffff; ${ATTENDANCE_EMAIL_FONT}">
+            <div style="font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #c7d0f0;">OHS Academics &amp; Attendance Hub</div>
+            <div style="font-size: 24px; font-weight: bold; margin-top: 6px;">Weekly Attendance Threshold Report</div>
+            <div style="font-size: 13px; color: #dbe1f5; margin-top: 6px;">${date}</div>
+          </td></tr>
+          ${preview}
+          <tr><td style="padding: 24px 32px 8px 32px; color: #1f2937; font-size: 14px; line-height: 1.5; ${ATTENDANCE_EMAIL_FONT}">
+            <p style="margin: 0 0 8px 0;">Hello,</p>
+            <p style="margin: 0 0 8px 0;">These students have reached attendance thresholds that call for a response from you. ${newLine}</p>
+            <p style="margin: 0; font-size: 12px; color: #6b7280;">Counts are class periods (${PERIODS_PER_DAY} periods = 1 day). Each student appears under their highest level per category.</p>
+          </td></tr>
+          <tr><td style="padding: 16px 32px 8px 32px; ${ATTENDANCE_EMAIL_FONT}">
+            <div style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: #6b7280; font-weight: bold; margin-bottom: 8px;">At a glance</div>
+            ${buildAttendanceSummaryHtml_(groups)}
+          </td></tr>
+          <tr><td style="padding: 20px 32px 12px 32px; ${ATTENDANCE_EMAIL_FONT}">
+            ${groups.map(buildAttendanceLevelSectionHtml_).join('')}
+          </td></tr>
+          <tr><td style="padding: 18px 32px; background-color: #f7f8fa; border-top: 1px solid #e6e9ef; text-align: center; font-size: 11px; color: #6b7280; line-height: 1.5; ${ATTENDANCE_EMAIL_FONT}">
+            Automated notification from the OHS Academics &amp; Attendance Hub. Please do not reply to this email.<br>
+            Thresholds and recipients are managed in Admin Config &rarr; Attendance Thresholds.
+          </td></tr>
+        </table>
+      </td></tr></table>
     </body></html>`;
 }
 

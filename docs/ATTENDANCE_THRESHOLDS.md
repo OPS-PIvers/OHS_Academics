@@ -17,9 +17,12 @@ PFE absences (R) are not counted. To change the mapping, edit `ATTENDANCE_CATEGO
 
 ## What each email contains
 One email per recipient per week:
-1. **Newly reached since the last report.** If a student skipped levels, they appear once at the highest level, with an "Also crossed" note.
-   Repeating levels (tardies every 4) show how many times they have been reached.
-2. **All students currently at each level.** Each student is listed only under their highest level per category.
+1. **At a glance**: one row per level, with the new and total student counts.
+2. **One table per level**, listing everyone currently at it. Students who reached it since the last report get a
+   **NEW** badge and are listed first; then students are sorted by most periods. A student who skipped levels gets an
+   "Also crossed" note, and repeating levels (tardies every 4) show how many times they have been reached.
+   Each table shows only the counts for that level's category (for example, Medical and Illness for SAT L4).
+   Each student is listed only under their highest level per category.
 
 Recipients for a level are its **Recipient Emails** plus, when **Include Student's Counselor** is checked,
 that student's counselor (from the Admin Settings alpha ranges). Counselors only receive their own students.

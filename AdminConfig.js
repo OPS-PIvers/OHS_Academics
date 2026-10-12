@@ -212,6 +212,7 @@ function getAdminConfigData() {
     activityAdvisors: readActivityAdvisors_(),
     attendanceThresholds: readAttendanceThresholdsForAdmin_(),
     attendanceCategoryOptions: Object.keys(ATTENDANCE_CATEGORIES),
+    attendanceLegalStatusOptions: [''].concat(Object.keys(ATTENDANCE_LEGAL_STATUS_COLORS)),
     roleOptions: STAFF_ROLE_OPTIONS.slice()
   };
 }
