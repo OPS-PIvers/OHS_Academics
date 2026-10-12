@@ -492,6 +492,8 @@
                 switchTab(tabAdmin, contentAdmin);
                 if (!adminConfigData) {
                     loadAdminConfig();
+                } else {
+                    contentAdmin.querySelectorAll('textarea').forEach(autoSizeTextarea);
                 }
             });
         }
@@ -643,16 +645,16 @@
                            done: res => 'Preview sent: ' + res.recipients + ' email(s) to you, ' + res.newEntries + ' new crossing(s).' +
                              (res.levelsWithoutRecipients.length ? ' Levels with no recipients: ' + res.levelsWithoutRecipients.join(', ') : '') } ],
               columns: [
-                { field: 'name', label: 'Level Name', type: 'text' },
-                { field: 'legalStatus', label: 'Legal Status', type: 'text' },
-                { field: 'category', label: 'Category', type: 'select', optionsKey: 'attendanceCategoryOptions' },
-                { field: 'threshold', label: 'Threshold (Periods)', type: 'text' },
-                { field: 'repeatEvery', label: 'Repeat Every', type: 'text' },
-                { field: 'response', label: 'Response', type: 'text' },
-                { field: 'recipientEmails', label: 'Recipient Emails', type: 'text' },
-                { field: 'includeCounselor', label: 'Student’s Counselor?', type: 'checkbox', default: true },
-                { field: 'contacts', label: 'Contacts (Reference)', type: 'text' },
-                { field: 'active', label: 'Active?', type: 'checkbox', default: true }
+                { field: 'active', label: 'Active', type: 'checkbox', default: true },
+                { field: 'name', label: 'Level Name', type: 'textarea', minWidth: '9rem' },
+                { field: 'legalStatus', label: 'Legal Status', type: 'select', optionsKey: 'attendanceLegalStatusOptions', minWidth: '10.5rem' },
+                { field: 'category', label: 'Category', type: 'select', optionsKey: 'attendanceCategoryOptions', minWidth: '6rem' },
+                { field: 'threshold', label: 'Periods', type: 'number', min: 1, required: true },
+                { field: 'repeatEvery', label: 'Repeat', type: 'number', min: 1, placeholder: '—' },
+                { field: 'response', label: 'Response', type: 'textarea', minWidth: '9rem' },
+                { field: 'includeCounselor', label: 'Counselor', type: 'checkbox', default: true },
+                { field: 'recipientEmails', label: 'Recipient Emails', type: 'textarea', minWidth: '15rem', placeholder: 'first.last@orono.k12.mn.us, …' },
+                { field: 'contacts', label: 'Contacts (Reference)', type: 'textarea', minWidth: '9rem' }
               ] }
         ];
 
@@ -795,7 +797,7 @@
             htr.className = 'bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase';
             section.columns.forEach(col => {
                 const th = document.createElement('th');
-                th.className = 'px-2 py-2';
+                th.className = 'px-2 py-2 align-bottom' + (isCompactColumn(col) ? ' text-center whitespace-nowrap w-px' : '');
                 th.textContent = col.label;
                 htr.appendChild(th);
             });
@@ -821,8 +823,9 @@
 
             section.columns.forEach(col => {
                 const td = document.createElement('td');
-                td.className = 'px-2 py-1 align-top';
+                td.className = 'px-2 py-1.5 align-top' + (isCompactColumn(col) ? ' text-center w-px' : '');
                 const value = rowData ? rowData[col.field] : (col.default !== undefined ? col.default : '');
+                const fieldClass = 'w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm admin-field focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
 
                 if (col.type === 'readonly') {
                     td.textContent = value == null ? '' : String(value);
@@ -833,27 +836,58 @@
                 } else if (col.type === 'checkbox') {
                     const input = document.createElement('input');
                     input.type = 'checkbox';
-                    input.className = 'h-4 w-4 admin-field';
+                    input.className = 'h-4 w-4 mt-2 cursor-pointer admin-field';
                     input.dataset.field = col.field;
                     input.checked = value === true;
+                    input.setAttribute('aria-label', col.label);
                     td.appendChild(input);
                 } else if (col.type === 'select') {
                     const select = document.createElement('select');
-                    select.className = 'w-full p-1 border border-gray-300 rounded text-sm admin-field';
+                    select.className = fieldClass + ' bg-white';
                     select.dataset.field = col.field;
-                    const options = (adminConfigData && adminConfigData[col.optionsKey]) || [];
+                    if (col.minWidth) select.style.minWidth = col.minWidth;
+                    const options = ((adminConfigData && adminConfigData[col.optionsKey]) || []).slice();
+                    // Keep a stored value that is not in the option list instead of silently dropping it.
+                    const current = value == null ? '' : String(value);
+                    if (current && !options.some(opt => String(opt).toUpperCase() === current.toUpperCase())) options.push(current);
                     options.forEach(opt => {
                         const o = document.createElement('option');
                         o.value = opt;
-                        o.textContent = opt;
-                        if (String(value).toUpperCase() === String(opt).toUpperCase()) o.selected = true;
+                        o.textContent = opt === '' ? '—' : opt;
+                        if (current.toUpperCase() === String(opt).toUpperCase()) o.selected = true;
                         select.appendChild(o);
                     });
                     td.appendChild(select);
+                } else if (col.type === 'number') {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.inputMode = 'numeric';
+                    input.step = '1';
+                    if (col.min !== undefined) input.min = String(col.min);
+                    if (col.required) input.required = true;
+                    input.placeholder = col.placeholder || '';
+                    input.className = fieldClass + ' text-center';
+                    input.style.width = '4rem';
+                    input.dataset.field = col.field;
+                    input.value = value == null ? '' : String(value);
+                    td.appendChild(input);
+                } else if (col.type === 'textarea') {
+                    // Wraps and grows with its content so long values stay readable.
+                    const textarea = document.createElement('textarea');
+                    textarea.rows = 1;
+                    textarea.className = fieldClass + ' resize-none overflow-hidden leading-snug';
+                    textarea.style.fieldSizing = 'content'; // native auto-grow where supported (Chrome 123+)
+                    textarea.style.minWidth = col.minWidth || '10rem';
+                    textarea.placeholder = col.placeholder || '';
+                    textarea.dataset.field = col.field;
+                    textarea.value = value == null ? '' : String(value);
+                    textarea.addEventListener('input', () => autoSizeTextarea(textarea));
+                    td.appendChild(textarea);
                 } else {
                     const input = document.createElement('input');
                     input.type = col.type === 'email' ? 'email' : 'text';
-                    input.className = 'w-full p-1 border border-gray-300 rounded text-sm admin-field';
+                    input.className = fieldClass;
+                    input.style.minWidth = col.minWidth || (col.type === 'email' ? '15rem' : '9rem');
                     input.dataset.field = col.field;
                     input.value = value == null ? '' : String(value);
                     td.appendChild(input);
@@ -879,6 +913,23 @@
             const tbody = document.getElementById('admin-table-' + section.key);
             tbody.innerHTML = '';
             getSectionData(section).forEach(rowData => tbody.appendChild(makeRow(section, rowData)));
+            // Size once layout has settled; hidden tabs report 0 height, so this also re-runs when the tab is shown.
+            requestAnimationFrame(() => tbody.querySelectorAll('textarea').forEach(autoSizeTextarea));
+        }
+
+        // Compact columns (checkboxes, numbers) shrink to their content and are centered.
+        function isCompactColumn(col) {
+            return col.type === 'checkbox' || col.type === 'number';
+        }
+
+        const SUPPORTS_FIELD_SIZING = !!(window.CSS && CSS.supports && CSS.supports('field-sizing', 'content'));
+
+        // Fallback auto-grow for browsers without field-sizing. Includes the border, since
+        // scrollHeight does not and inputs use border-box sizing.
+        function autoSizeTextarea(textarea) {
+            if (SUPPORTS_FIELD_SIZING || !textarea.scrollHeight) return;
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight + textarea.offsetHeight - textarea.clientHeight) + 'px';
         }
 
         function collectSection(section) {
@@ -893,8 +944,8 @@
                 rows.push(obj);
             });
             if (section.addable) {
-                // Drop fully-empty rows (e.g. an added-but-unused row); judge by text/email fields only.
-                const textFields = section.columns.filter(c => c.type === 'text' || c.type === 'email').map(c => c.field);
+                // Drop fully-empty rows (e.g. an added-but-unused row); judge by typed fields only.
+                const textFields = section.columns.filter(c => ['text', 'email', 'textarea', 'number'].includes(c.type)).map(c => c.field);
                 return rows.filter(obj => textFields.some(f => String(obj[f] || '').trim() !== ''));
             }
             return rows;
@@ -918,7 +969,7 @@
         }
 
         function runSectionAction(action, btn) {
-            setSaving(btn, true);
+            setSaving(btn, true, 'Sending…');
             google.script.run
                 .withSuccessHandler(res => {
                     setSaving(btn, false);
@@ -949,12 +1000,12 @@
                 .setAutomatedEmailsEnabled(toggle.checked);
         }
 
-        function setSaving(btn, saving) {
+        function setSaving(btn, saving, busyLabel) {
             if (!btn) return;
             btn.disabled = saving;
             if (saving) {
                 btn.dataset.label = btn.textContent;
-                btn.textContent = 'Saving…';
+                btn.textContent = busyLabel || 'Saving…';
             } else if (btn.dataset.label) {
                 btn.textContent = btn.dataset.label;
             }
