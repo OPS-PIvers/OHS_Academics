@@ -75,8 +75,8 @@ const week1 = [
 setup(hub, week1);
 fakeNow = new RealDate('2026-10-13T11:00:00Z').getTime();
 context.incrementFListWeekCounts();
-check('ID match increments blank AE to 1', ae(2) === 1);
-check('multiple Fs count once; adds to existing total', ae(3) === 4);
+check('ID match starts a streak at 1', ae(2) === 1);
+check('multiple Fs count once; extends an existing streak', ae(3) === 4);
 check('name fallback match when ID missing', ae(4) === 1);
 check('student not on list stays blank', ae(5) === '');
 const log = sheets['F List Count Log'];
@@ -97,12 +97,13 @@ check('correction is not counted once 5 days pass', context.incrementFListWeekCo
 sheets['F List'] = new Sheet('F List', [fHeader, ['09', 'Abram, John D.', '702073', '2', 'PRE-CALC', 'Allex, J.', 'F', '48']]);
 fakeNow = new RealDate('2026-10-20T11:00:00Z').getTime();
 context.incrementFListWeekCounts();
-check('new list next week increments', ae(2) === 2 && ae(3) === 4);
+check('on the new list again: streak continues', ae(2) === 2);
+check('missing from the new list: streak resets to blank', ae(3) === '' && ae(4) === '');
 check('counted log row', log.getLastRow() === 4 && log.getCell(4, 6) === 'Counted');
 
 sheets['F List'] = new Sheet('F List', [fHeader]);
 fakeNow += 7 * DAY;
-check('empty F List counts nothing', context.incrementFListWeekCounts() === 'empty' && ae(2) === 2);
+check('empty F List changes nothing', context.incrementFListWeekCounts() === 'empty' && ae(2) === 2);
 
 context.resetFListWeekCounts();
 check('reset clears AE and log', ae(2) === '' && ae(3) === '' && log.getLastRow() === 1 && sheets[HUB].getCell(1, 31) === 'Weeks');

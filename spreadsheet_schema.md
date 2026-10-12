@@ -33,7 +33,7 @@ Tab name: ⭐Academics & Attendance Hub
 27 : AB : Spartan Hour Reqs High Priority : Number (1) 
 28 : AC : Total Club Meetings Attended : Number (1) : 
 29 : AD : Clubs Attended : Text
-30 : AE : Weeks on F List (Total) : Number (1) [running total, written weekly by FListCounter.js — do not add a formula here]
+30 : AE : Consecutive Weeks on D/F List : Number (1) [current streak, blank = not on the latest list; written weekly by FListCounter.js — do not add a formula here]
 31 : AF : Spartan Hour Advisor : Text
 32 : AG : Blended Courses : Text
 

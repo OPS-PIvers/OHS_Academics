@@ -1,8 +1,9 @@
 /**
- * F List running total (Hub column AE).
+ * Consecutive weeks on the F List (Hub column AE).
  *
  * Each time a NEW weekly F List is loaded into the "F List" tab, every Hub
- * student on it gets +1 in column AE ("Weeks on F List"). A daily trigger
+ * student on it gets +1 in column AE ("Consecutive Weeks on D/F List"), and
+ * every student NOT on it is reset to blank (streak broken). A daily trigger
  * checks the tab; a list is counted only when:
  *   - it is not empty,
  *   - its contents differ from the last list that was counted (so a week with
@@ -17,7 +18,7 @@
 const F_LIST_SHEET = "F List";
 const F_LIST_COUNT_LOG_SHEET = "F List Count Log";
 const F_LIST_HUB_SHEET = "⭐Academics & Attendance Hub";
-const F_LIST_HUB_TOTAL_COL = 31;   // AE (1-based) — Weeks on F List (running total)
+const F_LIST_HUB_STREAK_COL = 31;  // AE (1-based) — Consecutive Weeks on D/F List
 const F_LIST_MIN_DAYS_BETWEEN_COUNTS = 5;
 const F_LIST_TRIGGER_HOUR = 6;     // daily, before the 7am Tuesday emails
 const F_LIST_LOG_HEADERS = ['Date', 'Students on F List', 'Hub Rows Incremented', 'Not Found in Hub', 'List Fingerprint', 'Status'];
@@ -60,17 +61,18 @@ function summarizeFList_(fListRows) {
 }
 
 /**
- * Pure: works out the new column AE values for one counted week.
+ * Pure: works out the new column AE values for one counted week — +1 for
+ * students on the list, blank (streak reset) for everyone else.
  * A Hub row matches an F List student by ID (Hub D = F List C), or — when the
  * ID is missing — by name (F List "Last, First M." starts with Hub "Last, First").
  * Each Hub row is incremented at most once, however many F's the student has.
  *
  * @param {Array[]} hubRows rows of Hub columns B..D ([name, grade, id]) from row 2 down.
- * @param {Array[]} currentTotals column AE values, same length as hubRows.
+ * @param {Array[]} currentStreaks column AE values, same length as hubRows.
  * @param {{id: string, name: string}[]} fStudents from summarizeFList_.
- * @returns {{totals: Array[], incremented: number, unmatched: string[]}}
+ * @returns {{streaks: Array[], incremented: number, unmatched: string[]}}
  */
-function applyFListWeek_(hubRows, currentTotals, fStudents) {
+function applyFListWeek_(hubRows, currentStreaks, fStudents) {
   const idToRow = new Map();
   hubRows.forEach((row, i) => {
     const id = String(row[2] || '').trim();
@@ -90,11 +92,8 @@ function applyFListWeek_(hubRows, currentTotals, fStudents) {
     else hits.add(idx);
   });
 
-  const totals = currentTotals.map((cell, i) => {
-    const current = Number(cell[0]) || 0;
-    return [hits.has(i) ? current + 1 : (cell[0] === '' ? '' : current)];
-  });
-  return { totals, incremented: hits.size, unmatched };
+  const streaks = currentStreaks.map((cell, i) => [hits.has(i) ? (Number(cell[0]) || 0) + 1 : '']);
+  return { streaks, incremented: hits.size, unmatched };
 }
 
 function getOrCreateFListCountLog_(ss) {
@@ -125,8 +124,8 @@ function readFListCountState_(logSheet) {
 }
 
 /**
- * Trigger handler (daily). Adds this week's F List to the Hub column AE running
- * total if a new list has been loaded. Safe to run by hand — it never counts
+ * Trigger handler (daily). Updates the Hub column AE streaks if a new F List
+ * has been loaded. Safe to run by hand — it never counts
  * the same list twice. Returns a short status string (also logged).
  */
 function incrementFListWeekCounts() {
@@ -162,9 +161,9 @@ function incrementFListWeekCounts() {
     if (hubLastRow < 2) return 'empty hub';
     const n = hubLastRow - 1;
     const hubRows = hubSheet.getRange(2, 2, n, 3).getValues(); // B Name, C Grade, D ID
-    const totalsRange = hubSheet.getRange(2, F_LIST_HUB_TOTAL_COL, n, 1);
-    const { totals, incremented, unmatched } = applyFListWeek_(hubRows, totalsRange.getValues(), students);
-    totalsRange.setValues(totals);
+    const streakRange = hubSheet.getRange(2, F_LIST_HUB_STREAK_COL, n, 1);
+    const { streaks, incremented, unmatched } = applyFListWeek_(hubRows, streakRange.getValues(), students);
+    streakRange.setValues(streaks);
 
     logSheet.appendRow([now, students.length, incremented, unmatched.join('; '), fingerprint, F_LIST_STATUS_COUNTED]);
     const msg = `F List counted: ${incremented} Hub students incremented (${students.length} on list, ${unmatched.length} not found in Hub).`;
@@ -196,10 +195,10 @@ function resetFListWeekCounts() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hubSheet = ss.getSheetByName(F_LIST_HUB_SHEET);
   const hubLastRow = hubSheet.getLastRow();
-  if (hubLastRow >= 2) hubSheet.getRange(2, F_LIST_HUB_TOTAL_COL, hubLastRow - 1, 1).clearContent();
+  if (hubLastRow >= 2) hubSheet.getRange(2, F_LIST_HUB_STREAK_COL, hubLastRow - 1, 1).clearContent();
   const logSheet = ss.getSheetByName(F_LIST_COUNT_LOG_SHEET);
   if (logSheet && logSheet.getLastRow() >= 2) {
     logSheet.getRange(2, 1, logSheet.getLastRow() - 1, F_LIST_LOG_HEADERS.length).clearContent();
   }
-  Logger.log('F List running totals and count log cleared.');
+  Logger.log('F List streaks and count log cleared.');
 }
