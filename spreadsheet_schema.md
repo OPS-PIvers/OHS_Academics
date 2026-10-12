@@ -33,7 +33,7 @@ Tab name: ⭐Academics & Attendance Hub
 27 : AB : Spartan Hour Reqs High Priority : Number (1) 
 28 : AC : Total Club Meetings Attended : Number (1) : 
 29 : AD : Clubs Attended : Text
-30 : AE : Consecutive Weeks on D/F List : Number (1)
+30 : AE : Consecutive Weeks on D/F List : Number (1) [current streak, blank = not on the latest list; written weekly by FListCounter.js — do not add a formula here]
 31 : AF : Spartan Hour Advisor : Text
 32 : AG : Blended Courses : Text
 
@@ -188,3 +188,12 @@ Tab name: Attendance Threshold Log
 2 : C : Level Name : Text (matches Attendance Thresholds col A)
 3 : D : Times Reported : Number (1) [1 for one-time levels; N for repeating levels]
 4 : E : Last Updated : Date
+
+Tab name: F List Count Log
+[Auto-created. One row per F List seen by FListCounter.js; the rows are how the script knows which lists it has already handled. Clear it only together with Hub column AE (run resetFListWeekCounts).]
+0 : A : Date : Date
+1 : B : Students on F List : Number (1) [unique students]
+2 : C : Hub Rows Incremented : Number (1)
+3 : D : Not Found in Hub : Text (semicolon-separated F List names with no matching Hub row)
+4 : E : List Fingerprint : Text (hash of that week's F List contents)
+5 : F : Status : Text ("Counted" or "Correction (not counted)")

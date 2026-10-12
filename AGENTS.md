@@ -13,6 +13,7 @@
 *   `Code.js`: Contains all server-side logic, including data retrieval, email automation, and serving the web app.
 *   `AdminConfig.js`: Server endpoints for the in-app Admin Config page.
 *   `AttendanceThresholds.js`: Weekly attendance-threshold alert emails and the dashboard "Attendance Tiers" data. See `docs/ATTENDANCE_THRESHOLDS.md`.
+*   `FListCounter.js`: Consecutive weeks each student has been on the F List (Hub column AE). See `docs/F_LIST_COUNTER.md`.
 *   `index.html`: The client-side code for the dashboard, including HTML, CSS (Tailwind), and JavaScript (Chart.js logic).
 *   `spreadsheet_schema.md`: **CRITICAL**. Maps spreadsheet columns to data fields. Always refer to this when modifying data retrieval logic.
 *   `SNAPSHOT_SETUP.md`: Documentation for the historical snapshot system.
