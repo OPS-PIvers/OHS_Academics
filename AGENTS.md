@@ -11,6 +11,8 @@
 
 ## File Structure
 *   `Code.js`: Contains all server-side logic, including data retrieval, email automation, and serving the web app.
+*   `AdminConfig.js`: Server endpoints for the in-app Admin Config page.
+*   `AttendanceThresholds.js`: Weekly attendance-threshold alert emails and the dashboard "Attendance Tiers" data. See `docs/ATTENDANCE_THRESHOLDS.md`.
 *   `index.html`: The client-side code for the dashboard, including HTML, CSS (Tailwind), and JavaScript (Chart.js logic).
 *   `spreadsheet_schema.md`: **CRITICAL**. Maps spreadsheet columns to data fields. Always refer to this when modifying data retrieval logic.
 *   `SNAPSHOT_SETUP.md`: Documentation for the historical snapshot system.
@@ -27,7 +29,7 @@
 *   **Container-Bound**: The script is container-bound to a specific Google Sheet. Use `SpreadsheetApp.getActiveSpreadsheet()` to access data.
 *   **Role-Based Access**: The system supports multiple roles (`ADMIN`, `COUNSELOR`, `TEACHER`). Ensure any new data endpoints respect these roles.
 *   **Snapshot System**: The `SNAPSHOT_METRICS_CONFIG` constant in `Code.js` defines metrics for historical snapshots. Update this config if adding new global metrics.
-*   **Email Notifications**: Functions like `sendTier2InstructorEmails`, `sendCounselorSummaryEmails`, and `sendIneligibilityNotifications` handle automated emails. These are typically triggered by time-based triggers.
+*   **Email Notifications**: Functions like `sendTier2InstructorEmails`, `sendCounselorSummaryEmails`, `sendIneligibilityNotifications`, and `sendAttendanceThresholdEmails` handle automated emails. These are typically triggered by time-based triggers.
 
 ### Frontend (`index.html`)
 *   **Single File Component**: All client-side logic (HTML, CSS, JS) is currently in `index.html`. Keep this structure unless splitting is explicitly requested.

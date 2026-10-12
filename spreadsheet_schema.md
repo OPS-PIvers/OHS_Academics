@@ -168,3 +168,23 @@ Tab name: Helper_Import
 4 : E : Letter Grade : Letter ["D" or "F"] 
 5 : F : Spartan Hour (Tuesday) : Date [M/DD/YYYY]   
 6 : G : Spartan Hour (Thursday) : Date [M/DD/YYYY] 
+Tab name: Attendance Thresholds
+[Auto-created with the default levels from the attendance response chart. Edited via Admin Config → Attendance Thresholds. Read by AttendanceThresholds.js.]
+0 : A : Level Name : Text (unique; the log is keyed on it — renaming resets who has been reported)
+1 : B : Legal Status : Text ("", "Continuing Truant", "Habitual Truant", "Withdrawn"; drives row color)
+2 : C : Category : Text ("TARDY" = Hub O; "TRUANT" = Hub N + S; "ILLNESS" = Hub P + Q)
+3 : D : Threshold (Periods) : Number (1) [7 periods = 1 day]
+4 : E : Repeat Every (Periods) : Number (1) or blank [blank = alert once; e.g. 4 = alert at 4, 8, 12…]
+5 : F : Response : Text
+6 : G : Recipient Emails : Text (comma-separated)
+7 : H : Include Student's Counselor : Checkbox [counselor resolved from Admin Settings alpha ranges]
+8 : I : Contacts (Reference) : Text [names from the chart; informational only]
+9 : J : Active : Checkbox
+
+Tab name: Attendance Threshold Log
+[Auto-created. Written by the weekly attendance threshold email; do not edit by hand except to clear it.]
+0 : A : Student Key : Text ("id:<Hub ID>" or "name:<last, first>")
+1 : B : Student Name : Text
+2 : C : Level Name : Text (matches Attendance Thresholds col A)
+3 : D : Times Reported : Number (1) [1 for one-time levels; N for repeating levels]
+4 : E : Last Updated : Date

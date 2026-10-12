@@ -70,6 +70,7 @@
                     <button id="tab-students" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-white border-white">Student List</button>
                     <button id="tab-visuals" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Data Visualizations</button>
                     <button id="tab-historical" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300">Historical Trends</button>
+                    <button id="tab-attendance" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300" style="display:none;">Attendance Tiers</button>
                     <button id="tab-admin" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-400 border-transparent hover:text-white hover:border-gray-300" style="display:none;">Admin Config</button>
                 </nav>
             </div>
@@ -261,6 +262,41 @@
                 </div>
             </div>
 
+            <div id="tab-content-attendance" class="hidden">
+                <div class="card mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-xl font-semibold text-gray-700">Attendance Tiers</h2>
+                        <button id="reset-attendance-filters-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">Clear Filters</button>
+                    </div>
+                    <p id="attendance-tiers-subtitle" class="text-sm text-gray-600 mb-4"></p>
+                    <div id="attendance-tier-cards" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input type="text" id="attendance-search" placeholder="Search by student name..." class="w-full p-2 border border-gray-300 rounded-lg">
+                        <div>
+                            <label for="attendance-category-filter" class="sr-only">Filter by Category</label>
+                            <select id="attendance-category-filter" class="filter-select w-full"></select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50">
+                                <tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="px-4 py-3">Student Name</th>
+                                    <th class="px-4 py-3 text-center">Grade</th>
+                                    <th class="px-4 py-3">Category</th>
+                                    <th class="px-4 py-3">Level</th>
+                                    <th class="px-4 py-3">Response</th>
+                                    <th class="px-4 py-3 text-center">Periods (Days)</th>
+                                    <th class="px-4 py-3">Letters Sent</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-tier-list" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                    <div id="no-attendance-message" class="text-center py-8 text-gray-500 hidden">No students match the current filters.</div>
+                </div>
+            </div>
+
             <div id="tab-content-admin" class="hidden">
                 <div id="admin-config-message" class="hidden mb-4 p-4 rounded-lg" role="alert" aria-live="polite"></div>
                 <div id="admin-config-loading" class="text-center py-8 text-gray-500">Loading configuration…</div>
@@ -332,6 +368,11 @@
                 document.getElementById('export-infographic-btn').style.display = 'none';
             }
 
+            if (USER_ROLE === 'ADMIN' || USER_ROLE === 'COUNSELOR') {
+                // Attendance Tiers lists named students, so it is never shown to TEACHERs
+                document.getElementById('tab-attendance').style.display = '';
+            }
+
             if (USER_ROLE === 'ADMIN') {
                 // Reveal the admin-only Admin Config tab
                 const adminTab = document.getElementById('tab-admin');
@@ -383,6 +424,7 @@
 
             // Normal flow for ADMIN/COUNSELOR with student data
             allStudentData = students;
+            attendanceTiers = response.attendanceTiers || null;
 
             // Store anonymized full-school data for counselors
             if (anonymizedData) {
@@ -399,6 +441,7 @@
             setupSorting();
             setupTooltips();
             setupClearButtons();
+            setupAttendanceTiers();
             setupTabs();
 
             updateDashboard();
@@ -410,14 +453,16 @@
             const tabStudents = document.getElementById('tab-students');
             const tabVisuals = document.getElementById('tab-visuals');
             const tabHistorical = document.getElementById('tab-historical');
+            const tabAttendance = document.getElementById('tab-attendance');
             const tabAdmin = document.getElementById('tab-admin');
             const contentStudents = document.getElementById('tab-content-students');
             const contentVisuals = document.getElementById('tab-content-visuals');
             const contentHistorical = document.getElementById('tab-content-historical');
+            const contentAttendance = document.getElementById('tab-content-attendance');
             const contentAdmin = document.getElementById('tab-content-admin');
 
             const switchTab = (activeTab, activeContent) => {
-                [tabStudents, tabVisuals, tabHistorical, tabAdmin].forEach(tab => {
+                [tabStudents, tabVisuals, tabHistorical, tabAttendance, tabAdmin].forEach(tab => {
                     const isActive = tab === activeTab;
                     tab.classList.toggle('text-white', isActive);
                     tab.classList.toggle('border-white', isActive);
@@ -426,7 +471,7 @@
                     tab.classList.toggle('hover:text-white', !isActive);
                     tab.classList.toggle('hover:border-gray-300', !isActive);
                 });
-                [contentStudents, contentVisuals, contentHistorical, contentAdmin].forEach(content => {
+                [contentStudents, contentVisuals, contentHistorical, contentAttendance, contentAdmin].forEach(content => {
                     content.classList.toggle('hidden', content !== activeContent);
                 });
             };
@@ -439,12 +484,122 @@
                     loadHistoricalData();
                 }
             });
+            tabAttendance.addEventListener('click', () => {
+                switchTab(tabAttendance, contentAttendance);
+                renderAttendanceTiers();
+            });
             tabAdmin.addEventListener('click', () => {
                 switchTab(tabAdmin, contentAdmin);
                 if (!adminConfigData) {
                     loadAdminConfig();
                 }
             });
+        }
+
+        // ===============================================================
+        // Attendance Tiers (ADMIN / COUNSELOR). Levels and each student's highest level per
+        // category are computed server-side (AttendanceThresholds.js); this only renders them.
+        // ===============================================================
+        let attendanceTiers = null;
+        let attendanceFilters = { search: '', category: 'all', level: 'all' };
+        const ATTENDANCE_STATUS_CLASSES = { 'Continuing Truant': 'bg-yellow-100', 'Habitual Truant': 'bg-orange-200', 'Withdrawn': 'bg-red-200' };
+
+        function setupAttendanceTiers() {
+            const select = document.getElementById('attendance-category-filter');
+            select.innerHTML = '';
+            const categories = attendanceTiers ? _.uniqBy(attendanceTiers.levels, 'category') : [];
+            [{ category: 'all', categoryLabel: 'All Categories' }].concat(categories).forEach(l => {
+                const o = document.createElement('option');
+                o.value = l.category;
+                o.textContent = l.categoryLabel;
+                select.appendChild(o);
+            });
+            select.addEventListener('change', e => { attendanceFilters.category = e.target.value; attendanceFilters.level = 'all'; renderAttendanceTiers(); });
+            document.getElementById('attendance-search').addEventListener('input', e => { attendanceFilters.search = e.target.value.toLowerCase(); renderAttendanceTiers(); });
+            document.getElementById('reset-attendance-filters-btn').addEventListener('click', () => {
+                attendanceFilters = { search: '', category: 'all', level: 'all' };
+                document.getElementById('attendance-search').value = '';
+                select.value = 'all';
+                renderAttendanceTiers();
+            });
+        }
+
+        function renderAttendanceTiers() {
+            const subtitle = document.getElementById('attendance-tiers-subtitle');
+            const cards = document.getElementById('attendance-tier-cards');
+            const tbody = document.getElementById('attendance-tier-list');
+            cards.innerHTML = '';
+            tbody.innerHTML = '';
+            if (!attendanceTiers) {
+                subtitle.textContent = 'Attendance tier data is unavailable. Check the "Attendance Thresholds" sheet.';
+                return;
+            }
+            const { levels, rows, schoolCounts, periodsPerDay } = attendanceTiers;
+            const isCounselor = USER_ROLE === 'COUNSELOR';
+            subtitle.textContent = 'Each student appears under their highest level per category. Counts are class periods (' + periodsPerDay + ' periods = 1 day).' +
+                (isCounselor ? ' Names are limited to your alpha list; school-wide counts are anonymous.' : '') + ' Click a level to filter.';
+
+            const countsByLevel = _.countBy(rows, 'levelName');
+            levels.filter(l => attendanceFilters.category === 'all' || l.category === attendanceFilters.category).forEach(level => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const selected = attendanceFilters.level === level.name;
+                btn.className = 'rounded-lg p-3 text-left border transition ' + (ATTENDANCE_STATUS_CLASSES[level.legalStatus] || 'bg-gray-50') +
+                    (selected ? ' border-blue-700 ring-2 ring-blue-700' : ' border-gray-200 hover:border-gray-400');
+                const count = document.createElement('div');
+                count.className = 'text-2xl font-bold text-gray-800';
+                count.textContent = countsByLevel[level.name] || 0;
+                const name = document.createElement('div');
+                name.className = 'text-xs font-semibold text-gray-700';
+                name.textContent = level.name;
+                const meta = document.createElement('div');
+                meta.className = 'text-xs text-gray-600 mt-1';
+                meta.textContent = (level.legalStatus ? level.legalStatus + ' · ' : '') + level.response;
+                btn.append(count, name, meta);
+                if (isCounselor) {
+                    const school = document.createElement('div');
+                    school.className = 'text-xs text-gray-500 mt-1';
+                    school.textContent = 'School-wide: ' + (schoolCounts[level.name] || 0);
+                    btn.appendChild(school);
+                }
+                btn.addEventListener('click', () => {
+                    attendanceFilters.level = selected ? 'all' : level.name;
+                    renderAttendanceTiers();
+                });
+                cards.appendChild(btn);
+            });
+
+            const levelIndex = _.fromPairs(levels.map((l, i) => [l.name, i]));
+            const levelByName = _.keyBy(levels, 'name');
+            const filtered = _.orderBy(rows.filter(r =>
+                (attendanceFilters.category === 'all' || r.category === attendanceFilters.category) &&
+                (attendanceFilters.level === 'all' || r.levelName === attendanceFilters.level) &&
+                (!attendanceFilters.search || String(r.studentName).toLowerCase().includes(attendanceFilters.search))
+            ), [r => levelIndex[r.levelName], 'studentName'], ['desc', 'asc']);
+
+            filtered.forEach(r => {
+                const level = levelByName[r.levelName];
+                const tr = document.createElement('tr');
+                tr.className = ATTENDANCE_STATUS_CLASSES[level.legalStatus] || '';
+                const response = level.repeatEvery ? level.response + ' (×' + r.steps + ')' : level.response;
+                const days = Math.round((r.periods / periodsPerDay) * 10) / 10;
+                [
+                    [r.studentName, 'px-4 py-2 whitespace-nowrap font-medium text-gray-900'],
+                    [r.grade, 'px-4 py-2 text-center'],
+                    [level.categoryLabel, 'px-4 py-2'],
+                    [(level.legalStatus ? level.legalStatus + ' · ' : '') + level.name, 'px-4 py-2'],
+                    [response, 'px-4 py-2'],
+                    [r.periods + ' (' + days + ')', 'px-4 py-2 text-center'],
+                    [r.attendanceLetters, 'px-4 py-2 text-xs text-gray-600']
+                ].forEach(([text, cls]) => {
+                    const td = document.createElement('td');
+                    td.className = cls;
+                    td.textContent = text == null ? '' : String(text);
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            document.getElementById('no-attendance-message').classList.toggle('hidden', filtered.length > 0);
         }
 
         // ===============================================================
@@ -481,6 +636,23 @@
                 { field: 'otherNames', label: 'Other Name(s)', type: 'text' },
                 { field: 'otherEmails', label: 'Other Email(s)', type: 'text' },
                 { field: 'sendNotification', label: 'Notify?', type: 'checkbox' }
+              ] },
+            { key: 'attendanceThresholds', group: 'top', title: 'Attendance Thresholds', saveFn: 'saveAttendanceThresholds', addable: true,
+              help: 'Weekly attendance alert emails. Thresholds are in class periods (7 = 1 day). TARDY = tardies; TRUANT = unexcused + truancy; ILLNESS = medical + illness. Repeat Every re-alerts each time the count grows by that many periods (blank = once). Recipient emails are comma-separated. Renaming a level resets who has already been reported for it.',
+              actions: [ { label: 'Send preview to me', fn: 'sendAttendanceThresholdPreviewToMe',
+                           done: res => 'Preview sent: ' + res.recipients + ' email(s) to you, ' + res.newEntries + ' new crossing(s).' +
+                             (res.levelsWithoutRecipients.length ? ' Levels with no recipients: ' + res.levelsWithoutRecipients.join(', ') : '') } ],
+              columns: [
+                { field: 'name', label: 'Level Name', type: 'text' },
+                { field: 'legalStatus', label: 'Legal Status', type: 'text' },
+                { field: 'category', label: 'Category', type: 'select', optionsKey: 'attendanceCategoryOptions' },
+                { field: 'threshold', label: 'Threshold (Periods)', type: 'text' },
+                { field: 'repeatEvery', label: 'Repeat Every', type: 'text' },
+                { field: 'response', label: 'Response', type: 'text' },
+                { field: 'recipientEmails', label: 'Recipient Emails', type: 'text' },
+                { field: 'includeCounselor', label: 'Student’s Counselor?', type: 'checkbox', default: true },
+                { field: 'contacts', label: 'Contacts (Reference)', type: 'text' },
+                { field: 'active', label: 'Active?', type: 'checkbox', default: true }
               ] }
         ];
 
@@ -590,6 +762,14 @@
                 });
                 btnGroup.appendChild(addBtn);
             }
+            (section.actions || []).forEach(action => {
+                const actionBtn = document.createElement('button');
+                actionBtn.type = 'button';
+                actionBtn.className = 'px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium';
+                actionBtn.textContent = action.label;
+                actionBtn.addEventListener('click', () => runSectionAction(action, actionBtn));
+                btnGroup.appendChild(actionBtn);
+            });
             const saveBtn = document.createElement('button');
             saveBtn.type = 'button';
             saveBtn.className = 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium';
@@ -642,7 +822,7 @@
             section.columns.forEach(col => {
                 const td = document.createElement('td');
                 td.className = 'px-2 py-1 align-top';
-                const value = rowData ? rowData[col.field] : '';
+                const value = rowData ? rowData[col.field] : (col.default !== undefined ? col.default : '');
 
                 if (col.type === 'readonly') {
                     td.textContent = value == null ? '' : String(value);
@@ -735,6 +915,20 @@
                     showAdminMessage('Error saving ' + section.title + ': ' + errText(err), 'error');
                 })
                 [section.saveFn](payload);
+        }
+
+        function runSectionAction(action, btn) {
+            setSaving(btn, true);
+            google.script.run
+                .withSuccessHandler(res => {
+                    setSaving(btn, false);
+                    showAdminMessage(action.done ? action.done(res) : action.label + ' done.', 'success');
+                })
+                .withFailureHandler(err => {
+                    setSaving(btn, false);
+                    showAdminMessage('Error: ' + errText(err), 'error');
+                })
+                [action.fn]();
         }
 
         function saveEmailToggle(btn) {
