@@ -378,7 +378,7 @@ function sendTier2InstructorEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [Y], Consecutive Weeks [AE]
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Tier 2 Instructor [Y], Weeks on F List [AE]
       const studentRange = hubSheet.getRange("B2:AE" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
@@ -626,7 +626,7 @@ function sendCounselorSummaryEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Total Absences [T], Consecutive Weeks [AE]
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Total Absences [T], Weeks on F List [AE]
       const studentRange = hubSheet.getRange("B2:AE" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
@@ -793,7 +793,7 @@ function sendCounselorSummaryEmails() {
                       <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Failing Class(es)</th>
                       <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Unserved Detention</th>
                       <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Total Absences</th>
-                      <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Consecutive Weeks on D/F List</th>
+                      <th style="padding: 10px 12px; text-align: center; font-size: 10px;">Weeks on F List (Total)</th>
                       <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Spartan Hour Request (Past 7 days)</th>
                       <th style="padding: 10px 12px; text-align: left; font-size: 10px;">Skipped Session(s) (Past 7 days)</th>
                     </tr>
@@ -2100,7 +2100,7 @@ function sendCaseManagerSummaryEmails() {
   try {
     const hubLastRow = hubSheet.getLastRow();
     if (hubLastRow >= 2) {
-      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Case Manager [E], Consecutive Weeks [AE]
+      // Get columns: Student Name [B], Grade [C], Unserved Detention [G], Failing Class(es) [L], Case Manager [E], Weeks on F List [AE]
       const studentRange = hubSheet.getRange("B2:AE" + hubLastRow).getValues();
       studentRange.forEach(row => {
         const studentName = row[0]; // Index 0 of range -> Col B
@@ -2319,7 +2319,7 @@ function createStudentCardHtml(student, spartanData, studentAbsenceData, isPromi
     leftColumnContent = `
             <p style="margin: 0 0 8px;"><strong>Grade Level:</strong> ${student.grade}</p>
             <p style="margin: 0 0 8px;"><strong>Failing Classes:</strong> <span style="color: ${isFailing ? '#d9534f' : 'inherit'}">${student.failing ? student.failing.replace(/\n/g, ', ') : 'None'}</span></p>
-            <p style="margin: 0 0 ${includeDetention ? '8px' : '16px'};"><strong>Consecutive Weeks on D/F List:</strong> ${student.consecutiveWeeks}</p>
+            <p style="margin: 0 0 ${includeDetention ? '8px' : '16px'};"><strong>Weeks on F List (Total):</strong> ${student.consecutiveWeeks}</p>
     `;
 
     if (includeDetention) {

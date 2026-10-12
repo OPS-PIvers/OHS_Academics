@@ -1663,7 +1663,7 @@
                         const classes = student.failingClasses.split('\n').filter(Boolean).map(c => `<li>${c}</li>`).join('');
                         let weeksHTML = '';
                         if (student.consecutiveWeeks > 0) {
-                            weeksHTML = `<div style="margin-top: 10px;"><h4>Consecutive Weeks on D/F List</h4><p>${student.consecutiveWeeks}</p></div>`;
+                            weeksHTML = `<div style="margin-top: 10px;"><h4>Weeks on F List (Total)</h4><p>${student.consecutiveWeeks}</p></div>`;
                         }
                         content = `<h4>Failing Classes</h4><ul style="list-style: inside;">${classes}</ul>${weeksHTML}`;
                     } else if (type === 'detention' && student.unservedDetention > 0) {
