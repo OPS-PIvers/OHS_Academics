@@ -1307,6 +1307,7 @@ function getStudentDataForWebApp() {
           user: userInfo,
           students: studentData,
           allStudentsAnonymized: anonymizedAllStudents,
+          attendanceTiers: safeAttendanceTiersPayload_(studentData, allStudents),
           dfNoRequestDate: dfNoRequestInfo.date,
           dfNoRequestCount: dfNoRequestInfo.count
         };
@@ -1328,9 +1329,11 @@ function getStudentDataForWebApp() {
         };
     }
 
+    // ADMIN falls through to here with the full named student list.
     return {
       user: userInfo,
       students: studentData,
+      attendanceTiers: safeAttendanceTiersPayload_(studentData, studentData),
       dfNoRequestDate: dfNoRequestInfo.date,
       dfNoRequestCount: dfNoRequestInfo.count
     };
@@ -1338,6 +1341,20 @@ function getStudentDataForWebApp() {
   } catch (e) {
     Logger.log("Error in getStudentDataForWebApp: " + e.message);
     throw new Error("A server-side error occurred while fetching data: " + e.message);
+  }
+}
+
+/**
+ * Builds the Attendance Tiers tab payload (AttendanceThresholds.js) without letting a config
+ * problem break the whole dashboard load.
+ * @returns {Object|null}
+ */
+function safeAttendanceTiersPayload_(namedStudents, allStudents) {
+  try {
+    return buildAttendanceTiersPayload_(namedStudents, allStudents);
+  } catch (e) {
+    Logger.log("Error building attendance tiers: " + e.message);
+    return null;
   }
 }
 

@@ -106,6 +106,7 @@ class Sheet {
   getDataRange() {
     return new Range(this, 1, 1, this.getLastRow(), this.getLastColumn());
   }
+  setFrozenRows() { return this; }
 }
 
 class Spreadsheet {
@@ -138,16 +139,17 @@ const HtmlService = {
   XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }
 };
 
-// --- LOAD Code.js + AdminConfig.js into one context (GAS merges global scope) ---
+// --- LOAD Code.js + AdminConfig.js + AttendanceThresholds.js into one context (GAS merges global scope) ---
 const code = fs.readFileSync(path.join(__dirname, '..', 'Code.js'), 'utf8');
 const adminConfig = fs.readFileSync(path.join(__dirname, '..', 'AdminConfig.js'), 'utf8');
+const attendanceThresholds = fs.readFileSync(path.join(__dirname, '..', 'AttendanceThresholds.js'), 'utf8');
 
 const sandbox = {
   SpreadsheetApp, Session, MailApp, LockService, Logger, Utilities, ScriptApp, HtmlService,
   console, Map, Set, Date
 };
 vm.createContext(sandbox);
-vm.runInContext(code + '\n' + adminConfig, sandbox);
+vm.runInContext(code + '\n' + adminConfig + '\n' + attendanceThresholds, sandbox);
 
 // ---------------------------------------------------------------
 // TEST HARNESS

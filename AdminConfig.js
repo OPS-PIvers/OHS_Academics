@@ -19,6 +19,7 @@
  *  - "✎Activity Advisors & Coaches" — edit existing rows only (A=Activity, B=Students are read-only).
  *      Editable: C=PrimaryName, D=PrimaryEmail, E=SecondaryName, F=SecondaryEmail,
  *                G=OtherNames, H=OtherEmails, I=SendNotification (checkbox). J=Timestamp is never written here.
+ *  - "Attendance Thresholds" — read/saved by AttendanceThresholds.js (saveAttendanceThresholds).
  */
 
 const ADMIN_SETTINGS_SHEET = "Admin Settings";
@@ -209,6 +210,8 @@ function getAdminConfigData() {
     },
     staffRoles: readStaffRoles_(),
     activityAdvisors: readActivityAdvisors_(),
+    attendanceThresholds: readAttendanceThresholdsForAdmin_(),
+    attendanceCategoryOptions: Object.keys(ATTENDANCE_CATEGORIES),
     roleOptions: STAFF_ROLE_OPTIONS.slice()
   };
 }
